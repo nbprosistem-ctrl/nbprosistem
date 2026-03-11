@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await axios.post('http://localhost:3001/api/auth/login', { email, password });
+    const response = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/login`, { email, password });
     localStorage.setItem('token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data.user));
     setUser(response.data.user);
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, password, role) => {
-    return await axios.post('http://localhost:3001/api/auth/register', { name, email, password, role });
+    return await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth/register`, { name, email, password, role });
   };
 
   const logout = () => {

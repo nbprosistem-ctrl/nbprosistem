@@ -21,7 +21,7 @@ export default function Header({ title }) {
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('http://localhost:3001/api/notifications', {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotifications(res.data);
@@ -33,7 +33,7 @@ export default function Header({ title }) {
   const markAsRead = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:3001/api/notifications/${id}/read`, {}, {
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}/read`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchNotifications();
@@ -48,7 +48,7 @@ export default function Header({ title }) {
       // Seria ideal uma nota na API p dar o update geral, mas faremos o mapeamento individual para velocidade:
       const unreadsIds = notifications.filter(n => !n.read).map(n => n.id);
       await Promise.all(
-         unreadsIds.map(id => axios.patch(`http://localhost:3001/api/notifications/${id}/read`, {}, {
+         unreadsIds.map(id => axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}/read`, {}, {
            headers: { Authorization: `Bearer ${token}` }
          }))
       );

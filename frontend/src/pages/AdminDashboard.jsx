@@ -13,7 +13,7 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3001/api/admin/users', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(response.data);
@@ -33,7 +33,7 @@ export default function AdminDashboard() {
   const handleApprove = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:3001/api/admin/users/${id}/approve`, {}, {
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Atualizar a lista localmente

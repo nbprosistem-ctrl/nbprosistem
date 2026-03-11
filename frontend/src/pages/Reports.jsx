@@ -18,7 +18,7 @@ export default function Reports() {
     const fetchMetrics = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('http://localhost:3001/api/reports/metrics', {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/reports/metrics`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setData(res.data);

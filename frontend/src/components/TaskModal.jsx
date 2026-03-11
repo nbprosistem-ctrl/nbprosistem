@@ -26,7 +26,7 @@ export default function TaskModal({ task, onClose }) {
   const fetchHistory = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3001/api/tasks/${task.id}/history`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/history`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHistory(res.data);
@@ -40,7 +40,7 @@ export default function TaskModal({ task, onClose }) {
   const fetchAttachments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3001/api/tasks/${task.id}/attachments`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/attachments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAttachments(res.data);
@@ -60,7 +60,7 @@ export default function TaskModal({ task, onClose }) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`http://localhost:3001/api/tasks/${task.id}/attachments`, formData, {
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/attachments`, formData, {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
       setAttachments([res.data, ...attachments]);
@@ -75,7 +75,7 @@ export default function TaskModal({ task, onClose }) {
   const fetchComments = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`http://localhost:3001/api/tasks/${task.id}/comments`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/comments`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setComments(res.data);
@@ -92,7 +92,7 @@ export default function TaskModal({ task, onClose }) {
     setSending(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`http://localhost:3001/api/tasks/${task.id}/comments`,
+      const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/comments`,
         { comment: newComment },
         { headers: { Authorization: `Bearer ${token}` } }
       );

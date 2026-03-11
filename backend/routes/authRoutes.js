@@ -10,6 +10,10 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
     
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    }
+
     const requestedRole = (role === 'ADMIN' || role === 'COLABORADOR') ? role : 'COLABORADOR';
 
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
@@ -25,11 +29,13 @@ router.post('/register', async (req, res) => {
       [name, email, passwordHash, requestedRole, 'PENDING']
     );
 
-    res.status(201).json({ message: 'Usuário cadastrado com sucesso. Aguardando aprovação do Admin.', user: result.rows[0] });
+    return res.status(201).json({ 
+      message: 'Usuário cadastrado com sucesso. Aguardando aprovação do Admin.', 
+      user: result.rows[0] 
+    });
   } catch (err) {
-    fs.appendFileSync('./login_error.log', new Date().toISOString() + ' REGISTER ERROR: ' + err.message + '\n');
     console.error('REGISTER ERROR:', err);
-    res.status(500).json({ error: 'Erro interno no servidor' });
+    return res.status(500).json({ error: 'Erro interno no servidor ao tentar cadastrar' });
   }
 });
 

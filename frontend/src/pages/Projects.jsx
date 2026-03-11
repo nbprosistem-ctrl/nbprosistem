@@ -22,7 +22,7 @@ export default function Projects() {
   const fetchProjects = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:3001/api/projects', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setProjects(response.data);
@@ -46,7 +46,7 @@ export default function Projects() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:3001/api/projects', {
+      await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects`, {
         name,
         client,
         description,
@@ -78,7 +78,7 @@ export default function Projects() {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:3001/api/projects/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchProjects();

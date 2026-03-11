@@ -67,10 +67,10 @@ export default function Board() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [resTasks, resProj, resServ, resUsers] = await Promise.all([
-        axios.get('http://localhost:3001/api/tasks', { headers }),
-        axios.get('http://localhost:3001/api/projects', { headers }),
-        axios.get('http://localhost:3001/api/admin/services', { headers }).catch(() => ({ data: [] })),
-        axios.get('http://localhost:3001/api/admin/users', { headers }).catch(() => ({ data: [] }))
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, { headers }),
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects`, { headers }),
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/services`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, { headers }).catch(() => ({ data: [] }))
       ]);
 
       setTasks(resTasks.data);
@@ -80,11 +80,11 @@ export default function Board() {
       setUsers(resUsers.data);
 
       // Carregar templates disponíveis
-      const resTmpl = await axios.get('http://localhost:3001/api/templates', { headers }).catch(() => ({ data: [] }));
+      const resTmpl = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/templates`, { headers }).catch(() => ({ data: [] }));
       setTemplates(resTmpl.data);
 
       // Carregar notas de coluna
-      const resNotes = await axios.get('http://localhost:3001/api/column-notes', { headers }).catch(() => ({ data: {} }));
+      const resNotes = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/column-notes`, { headers }).catch(() => ({ data: {} }));
       setColumnNotes(resNotes.data);
     } catch (err) {
       console.error(err);
@@ -134,7 +134,7 @@ export default function Board() {
     // Call Backend (Silencioso para não travar a UI)
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:3001/api/tasks/${draggableId}/status`, 
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${draggableId}/status`, 
         { status_column: destination.droppableId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -158,12 +158,12 @@ export default function Board() {
 
       if (templateId) {
         // Modo Template: gera múltiplas tarefas automaticamente
-        await axios.post(`http://localhost:3001/api/templates/${templateId}/apply`, {
+        await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/templates/${templateId}/apply`, {
           project_id: projectId, owner_id: ownerId || null, due_date: dueDate || null
         }, { headers: { Authorization: `Bearer ${token}` } });
       } else {
         // Modo Manual: cria uma única tarefa  
-        await axios.post('http://localhost:3001/api/tasks', {
+        await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, {
           title, description, project_id: projectId, service_id: serviceId, 
           owner_id: ownerId, priority, due_date: dueDate, recurrence,
           recurrence_days: recurrenceDays.join(','), recurrence_time: recurrenceTime,
@@ -193,7 +193,7 @@ export default function Board() {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:3001/api/tasks/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchData();
@@ -224,7 +224,7 @@ export default function Board() {
   const saveColumnNote = async (columnId, note) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`http://localhost:3001/api/column-notes/${columnId}`,
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/column-notes/${columnId}`,
         { note },
         { headers: { Authorization: `Bearer ${token}` } }
       );
