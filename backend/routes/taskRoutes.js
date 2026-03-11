@@ -110,8 +110,16 @@ router.post('/', async (req, res) => {
        await createNotification(
          owner_id,
          'Nova Tarefa Atribuída',
-         `Você foi escalado para: ${title}`
+         `Você foi escalado para: ${title}`,
+         'task_assigned',
+         createdTask.id,
+         req.io
        );
+    }
+
+    // Emite o evento global para os outros clientes atualizarem o board
+    if (req.io) {
+      req.io.emit('card_created', createdTask);
     }
 
     res.status(201).json(createdTask);
@@ -239,11 +247,20 @@ router.patch('/:id/status', async (req, res) => {
 
     // Dispara Sino caso quem arrastou for Diferente do Dono
     if(oldTask.owner_id && oldTask.owner_id !== req.user.id) {
+       let type = status_column === 'DONE' ? 'task_completed' : 'info';
        await createNotification(
          oldTask.owner_id,
-         'Status Atualizado',
-         `A tarefa "${oldTask.title}" foi movida para ${status_column}.`
+         status_column === 'DONE' ? 'Tarefa Finalizada' : 'Status Atualizado',
+         status_column === 'DONE' ? `A tarefa "${oldTask.title}" foi concluída.` : `A tarefa "${oldTask.title}" foi movida para ${status_column}.`,
+         type,
+         id,
+         req.io
        );
+    }
+
+    // Avisa todos para atualizar o card na interface
+    if (req.io) {
+      req.io.emit('card_moved', result.rows[0]);
     }
 
     res.json({ message: 'Status atualizado com sucesso.', task: result.rows[0] });

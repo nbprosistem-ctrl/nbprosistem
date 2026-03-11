@@ -6,6 +6,7 @@ import { Plus, Trash2, Calendar, User, Tag, ArrowRight, Search, SlidersHorizonta
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import TaskModal from '../components/TaskModal';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 
 export default function Board() {
   const { user } = useContext(AuthContext);
@@ -52,6 +53,11 @@ export default function Board() {
   // Notas editáveis por coluna
   const [columnNotes, setColumnNotes] = useState({});
 
+  // Hub de Notificações e WebSockets
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const socketRef = useRef(null);
+
   // Colunas do Kanban - Agora INCLUINDO BACKLOG
   const kanbanColumns = [
     { id: 'BACKLOG', title: 'Backlog', color: '#94a3b8' },
@@ -66,11 +72,12 @@ export default function Board() {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [resTasks, resProj, resServ, resUsers] = await Promise.all([
+      const [resTasks, resProj, resServ, resUsers, resNotif] = await Promise.all([
         axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, { headers }),
         axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects`, { headers }),
         axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/services`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, { headers }).catch(() => ({ data: [] }))
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, { headers }).catch(() => ({ data: [] })),
+        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications`, { headers }).catch(() => ({ data: [] }))
       ]);
 
       setTasks(resTasks.data);
@@ -78,6 +85,7 @@ export default function Board() {
       // Sempre carregar serviços e usuários (necessários para os filtros)
       setServices(resServ.data);
       setUsers(resUsers.data);
+      setNotifications(resNotif.data);
 
       // Carregar templates disponíveis
       const resTmpl = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/templates`, { headers }).catch(() => ({ data: [] }));
@@ -95,9 +103,52 @@ export default function Board() {
     }
   };
 
+  const markNotificationAsRead = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch(err) { console.error('Falha ao marcar como lida', err); }
+  };
+
   useEffect(() => {
     fetchData();
-  }, []);
+
+    // Iniciar Módulo WebSockets (Socket.IO)
+    socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:3001");
+    
+    if (user?.id) {
+       socketRef.current.emit('join_user_room', user.id);
+    }
+    
+    // Listeners do Real-time Kanban
+    socketRef.current.on('notification', (newNotif) => {
+       setNotifications(prev => [newNotif, ...prev]);
+    });
+
+    socketRef.current.on('card_created', (newTask) => {
+       setTasks(prev => {
+         if(prev.find(t => t.id === newTask.id)) return prev;
+         return [newTask, ...prev];
+       });
+    });
+
+    socketRef.current.on('card_moved', (updatedTask) => {
+       setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    });
+
+    socketRef.current.on('comment_added', (payload) => {
+       console.log('Comentário em Tempo Real adicionado em Tarefa', payload.taskId);
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    }
+  }, [user]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   // Computed: aplica filtros localmente (resposta imediata)
   const filteredTasks = tasks.filter(t => {
@@ -304,6 +355,73 @@ export default function Board() {
       <header className="topbar">
         <h1 className="topbar-title">Quadro Kanban</h1>
         <div className="topbar-right" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+
+          {/* Hub do Sino (Notifications) */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setShowNotifications(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '38px', height: '38px', borderRadius: '8px', border: '1px solid var(--border)',
+                background: unreadCount > 0 ? '#FEF2F2' : '#F9FAFB',
+                color: unreadCount > 0 ? '#EF4444' : '#6B7280',
+                cursor: 'pointer', transition: 'all 0.15s', position: 'relative'
+              }}
+            >
+              <Bell size={18} fill={unreadCount > 0 ? '#EF4444' : 'none'} />
+              {unreadCount > 0 && (
+                <span style={{ 
+                  position: 'absolute', top: '-4px', right: '-4px', background: '#EF4444', color: 'white', 
+                  borderRadius: '10px', fontSize: '0.65rem', padding: '0 5px', minWidth: '18px', border: '2px solid white', fontWeight: 'bold' 
+                }}>
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <div style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 300,
+                background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.12)', width: '300px', maxHeight: '400px', overflowY: 'auto',
+                display: 'flex', flexDirection: 'column'
+              }}>
+                <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 2 }}>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#111827' }}>Notificações</h4>
+                  {unreadCount > 0 && <span style={{ fontSize: '0.75rem', color: '#EF4444', fontWeight: '600' }}>{unreadCount} novas</span>}
+                </div>
+                
+                {notifications.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: '#9CA3AF', fontSize: '0.85rem' }}>
+                    <Bell size={24} style={{ opacity: 0.2, marginBottom: '0.5rem' }} />
+                    <p style={{ margin: 0 }}>Nenhuma notificação</p>
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <div 
+                      key={n.id} 
+                      onClick={() => !n.read && markNotificationAsRead(n.id)}
+                      style={{ 
+                        padding: '0.75rem 1rem', borderBottom: '1px solid #F3F4F6',
+                        background: n.read ? '#FFFFFF' : '#F8FAFC', cursor: n.read ? 'default' : 'pointer',
+                        transition: 'background 0.2s', opacity: n.read ? 0.7 : 1
+                      }}
+                    >
+                      <h5 style={{ margin: '0 0 0.25rem', fontSize: '0.8rem', color: '#1F2937', fontWeight: n.read ? '500' : '700' }}>
+                        {n.title}
+                      </h5>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280', lineHeight: '1.3' }}>
+                        {n.message}
+                      </p>
+                      <span style={{ display: 'block', marginTop: '0.4rem', fontSize: '0.65rem', color: '#9CA3AF' }}>
+                         {new Date(n.created_at).toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Botão de Filtros */}
           <div style={{ position: 'relative' }}>

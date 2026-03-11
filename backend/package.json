@@ -20,6 +20,7 @@
     "multer": "^2.1.1",
     "pg": "^8.20.0",
     "pg-format": "^1.0.4",
-    "postgres": "^3.4.8"
+    "postgres": "^3.4.8",
+    "socket.io": "^4.8.3"
   }
 }

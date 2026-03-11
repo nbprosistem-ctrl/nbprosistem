@@ -122,6 +122,8 @@ const initializeDatabase = async () => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type VARCHAR(50);
+            ALTER TABLE notifications ADD COLUMN IF NOT EXISTS task_id UUID REFERENCES tasks(id) ON DELETE CASCADE;
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_days VARCHAR(50);
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_time TIME;
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_start_date DATE;
@@ -157,9 +159,33 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const columnNoteRoutes = require('./routes/columnNoteRoutes');
 const path = require('path');
+const http = require('http');
+const { Server } = require("socket.io");
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE", "PUT", "OPTIONS"]
+  }
+});
+
+// Middleware injetar o `io` em todas as req para que as Rotas possam disparar eventos WebSockets
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
+io.on('connection', (socket) => {
+  socket.on('join_user_room', (userId) => {
+    if (userId) {
+      socket.join(userId);
+    }
+  });
+});
 
 app.use(cors());
 app.use(express.json());
@@ -185,8 +211,42 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });
 });
 
-app.listen(port, () => {
-  console.log(`Backend server rodando na porta ${port}`);
+const { createNotification } = require('./utils/notifier');
+const pool = require('./utils/database');
+
+server.listen(port, () => {
+  console.log(`Backend server rodando na porta ${port} com Socket.IO`);
+
+  // Job de Verificação de Tarefas Vencendo em 24h (Roda a cada 1 hora)
+  setInterval(async () => {
+    try {
+      const query = `
+        SELECT t.id, t.owner_id, t.title 
+        FROM tasks t
+        WHERE t.due_date IS NOT NULL 
+          AND t.status_column != 'DONE' 
+          AND t.owner_id IS NOT NULL
+          AND t.due_date <= CURRENT_TIMESTAMP + INTERVAL '24 hours'
+          AND NOT EXISTS (
+            SELECT 1 FROM notifications n 
+            WHERE n.task_id = t.id AND n.type = 'task_due_soon'
+          )
+      `;
+      const resTasks = await pool.query(query);
+      for (let t of resTasks.rows) {
+        await createNotification(
+          t.owner_id,
+          'Prazo Esgotando',
+          `A tarefa "${t.title}" vence em menos de 24 horas!`,
+          'task_due_soon',
+          t.id,
+          io
+        );
+      }
+    } catch(e) {
+      console.error('Erro no CronJob de Due Date:', e.message);
+    }
+  }, 3600000); // 1 hora
 });
 
 // reload

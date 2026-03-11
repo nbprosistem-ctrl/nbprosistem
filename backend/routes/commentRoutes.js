@@ -42,11 +42,13 @@ router.post('/:id/comments', async (req, res) => {
   }
 
   try {
-    const newComment = await pool.query(`
+    const insertedComment = await pool.query(`
       INSERT INTO task_comments (task_id, user_id, comment)
       VALUES ($1, $2, $3)
       RETURNING *
     `, [id, userId, comment]);
+
+    const newCommentId = insertedComment.rows[0].id;
 
     // Buscar os dados do usuário recém-inserido para já retornar formatado pro front
     const userQuery = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -69,7 +71,10 @@ router.post('/:id/comments', async (req, res) => {
         await createNotification(
             taskData.owner_id,
             'Novo comentário',
-            `${req.user.name} comentou em "${taskData.title}": "${comment.substring(0, 30)}..."`
+            `${req.user.name} comentou em "${taskData.title}": "${comment.substring(0, 30)}..."`,
+            'task_comment',
+            id,
+            req.io
         );
     }
     
@@ -87,7 +92,10 @@ router.post('/:id/comments', async (req, res) => {
                     await createNotification(
                         mentionedUserId,
                         'Você foi mencionado!',
-                        `${req.user.name} citou você na Tarefa "${taskData.title}".`
+                        `${req.user.name} citou você na Tarefa "${taskData.title}".`,
+                        'task_comment',
+                        id,
+                        req.io
                     );
                 }
             }
@@ -100,14 +108,21 @@ router.post('/:id/comments', async (req, res) => {
         tc.id, 
         tc.comment, 
         tc.created_at, 
-        u.id as user_id, 
-        u.name as user_name 
+        tc.user_id,
+        u.name as user_name
       FROM task_comments tc
       JOIN users u ON tc.user_id = u.id
       WHERE tc.id = $1
-    `, [newComment.rows[0].id]);
+    `, [newCommentId]);
 
-    res.status(201).json(selectQuery.rows[0]);
+    const newComment = selectQuery.rows[0];
+    
+    // Emitir via socket para a board atualizar em real-time
+    if (req.io) {
+       req.io.emit('comment_added', { taskId: id, comment: newComment });
+    }
+
+    res.status(201).json({ message: 'Comentário adicionado.', comment: newComment });
   } catch (err) {
     console.error('COMMENT ERROR CODE:', err.code);
     console.error('COMMENT ERROR MSG:', err.message);
