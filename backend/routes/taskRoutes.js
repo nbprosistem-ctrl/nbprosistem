@@ -42,10 +42,8 @@ router.get('/', async (req, res) => {
 
 // Criar nova Tarefa (POST /api/tasks)
 router.post('/', async (req, res) => {
-  // Apenas Admin pode criar tarefas globalmente no escopo atual
-  if (req.user.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Acesso negado: Apenas administradores podem delegar Tarefas.' });
-  }
+  // Qualquer usuário autenticado (Aprovado) pode criar tarefas. 
+  // O middleware authenticateToken já garante que ele é um funcionário válido.
 
   const { 
     title, description, project_id, service_id, owner_id, priority, due_date, recurrence,

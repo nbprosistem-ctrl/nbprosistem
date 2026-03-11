@@ -148,7 +148,6 @@ export default function Board() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (user.role !== 'ADMIN') return;
 
     setSubmitting(true);
     setError('');
@@ -398,12 +397,10 @@ export default function Board() {
             )}
           </div>
 
-          {/* Botão Nova Tarefa (somente admin) */}
-          {user?.role === 'ADMIN' && (
-            <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }} onClick={() => { setShowForm(v => !v); setShowFilters(false); }}>
-              {showForm ? 'Fechar' : <><Plus size={14} /> Nova Tarefa</>}
-            </button>
-          )}
+          {/* Botão Nova Tarefa (visível para todos) */}
+          <button className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }} onClick={() => { setShowForm(v => !v); setShowFilters(false); }}>
+            {showForm ? 'Fechar' : <><Plus size={14} /> Nova Tarefa</>}
+          </button>
         </div>
       </header>
 
@@ -423,8 +420,8 @@ export default function Board() {
 
         {error && <div className="alert">{error}</div>}
 
-        {/* Dropdown Formulário */}
-        {showForm && user?.role === 'ADMIN' && (
+        {/* Dropdown Formulário (visível a todos que clicarem em Nova Tarefa) */}
+        {showForm && (
           <div className="auth-card" style={{ maxWidth: '100%', marginBottom: '2rem', animation: 'fadeIn 0.3s' }}>
             <h3 style={{ color: 'var(--text-primary)', marginBottom: '1rem', fontWeight: '700' }}>Delegar Nova Tarefa</h3>
             
