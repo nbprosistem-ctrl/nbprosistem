@@ -354,13 +354,17 @@ export default function TaskModal({ task, onClose }) {
                   </p>
 
                   {user?.role === 'ADMIN' && user?.id !== task.owner_id ? (
-                    !showReviewInput ? (
+                    task.review_status === 'APPROVED' ? (
+                      <div style={{ background: '#ECFDF5', color: '#047857', padding: '0.75rem 1rem', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '700', border: '1px solid #A7F3D0', textAlign: 'center' }}>
+                        🟢 Card aprovado para publicação.
+                      </div>
+                    ) : !showReviewInput ? (
                      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                         <button 
                          disabled={reviewing}
                          onClick={() => submitReview('APPROVE')}
                          className="btn" style={{ background: '#10B981', flex: 1, padding: '0.6rem' }}>
-                          <Loader size={14} style={{ display: reviewing ? 'inline-block' : 'none' }} /> ✔️ Aprovar Arte
+                          <Loader size={14} style={{ display: reviewing ? 'inline-block' : 'none', marginRight: '5px' }} /> ✔️ Aprovar Arte
                         </button>
                         <button onClick={() => setShowReviewInput(true)}
                          className="btn" style={{ background: '#FFFFFF', color: '#DC2626', border: '1px solid #DC2626', flex: 1, padding: '0.6rem' }}>

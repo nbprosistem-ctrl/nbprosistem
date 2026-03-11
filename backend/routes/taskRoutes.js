@@ -329,6 +329,10 @@ router.patch('/:id/review', async (req, res) => {
 
        await logTaskHistory(id, req.user.id, 'APPROVED', `${req.user.name} aprovou esta tarefa.`);
 
+       // Incluir Comentário de Aprovação na Timeline do Card
+       await pool.query(`INSERT INTO task_comments (task_id, user_id, comment) VALUES ($1, $2, $3)`, 
+         [id, req.user.id, `Card aprovado, pronto para publicação, por favor agendar ou publicar.`]);
+
        if (taskData.owner_id) {
          await createNotification(taskData.owner_id, 'Tarefa Aprovada', `Sua tarefa "${taskData.title}" foi aprovada!`, 'info', id, req.io);
        }
