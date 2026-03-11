@@ -88,7 +88,8 @@ export default function Board() {
       setColumnNotes(resNotes.data);
     } catch (err) {
       console.error(err);
-      setError('Erro ao carregar dados do Kanban.');
+      const serverMsg = err.response?.data?.error || err.response?.data?.system || err.message || 'Erro Desconhecido';
+      setError(`Erro ao carregar dados do Kanban: ${serverMsg}`);
     } finally {
       setLoading(false);
     }

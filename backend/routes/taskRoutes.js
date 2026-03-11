@@ -36,7 +36,8 @@ router.get('/', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao buscar tarefas.' });
+    require('fs').writeFileSync('./tasks_error.log', JSON.stringify({ message: err.message, stack: err.stack }));
+    res.status(500).json({ error: 'Erro ao buscar tarefas.', system: err.message });
   }
 });
 
