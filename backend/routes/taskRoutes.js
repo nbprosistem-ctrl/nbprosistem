@@ -212,11 +212,11 @@ router.patch('/:id/status', async (req, res) => {
 
       // Clona a tarefa de volta pra esquerda (TODO), respeitando as colunas de recorrência
       if (shouldClone) {
-        await pool.query(
+        const clonedTaskRes = await pool.query(
           `INSERT INTO tasks (
             title, description, project_id, service_id, owner_id, priority, due_date, recurrence, status_column,
             recurrence_days, recurrence_time, recurrence_start_date, recurrence_end_type, recurrence_end_date, recurrence_occurrences
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'TODO', $9, $10, $11, $12, $13, $14)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'TODO', $9, $10, $11, $12, $13, $14) RETURNING *`,
           [
             oldTask.title, 
             oldTask.description, 
@@ -234,6 +234,23 @@ router.patch('/:id/status', async (req, res) => {
             newOccurrences
           ]
         );
+
+        // Avisa a todos que uma tarefa recorrente apareceu na Coluna TODO
+        if (req.io) {
+          req.io.emit('card_created', clonedTaskRes.rows[0]);
+        }
+
+        // Sino Exclusivo para o Responsável
+        if (oldTask.owner_id) {
+          await createNotification(
+            oldTask.owner_id,
+            'Tarefa Recorrente Gerada',
+            `A renovação do ciclo de "${oldTask.title}" ocorreu automaticamente.`,
+            'info',
+            clonedTaskRes.rows[0].id,
+            req.io
+          );
+        }
       }
     }
 

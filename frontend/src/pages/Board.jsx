@@ -346,6 +346,30 @@ export default function Board() {
     );
   }
 
+  const handleNotificationClick = (n) => {
+    if (!n.read) markNotificationAsRead(n.id);
+    if (n.task_id) {
+       const linkedTask = tasks.find(t => t.id === n.task_id);
+       if (linkedTask) {
+         setSelectedTask(linkedTask);
+         setShowNotifications(false); // Fecha o dropdown para mostrar o Modal limpo
+       }
+    }
+  };
+
+  const timeAgo = (dateInput) => {
+    if (!dateInput) return '';
+    const date = new Date(dateInput);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'agora mesmo';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min atrás`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} h atrás`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} d atrás`;
+    return date.toLocaleDateString('pt-BR');
+  };
+
   return (
     <div className="app-layout">
       <Sidebar />
@@ -400,10 +424,10 @@ export default function Board() {
                   notifications.map(n => (
                     <div 
                       key={n.id} 
-                      onClick={() => !n.read && markNotificationAsRead(n.id)}
+                      onClick={() => handleNotificationClick(n)}
                       style={{ 
                         padding: '0.75rem 1rem', borderBottom: '1px solid #F3F4F6',
-                        background: n.read ? '#FFFFFF' : '#F8FAFC', cursor: n.read ? 'default' : 'pointer',
+                        background: n.read ? '#FFFFFF' : '#F8FAFC', cursor: 'pointer',
                         transition: 'background 0.2s', opacity: n.read ? 0.7 : 1
                       }}
                     >
@@ -414,7 +438,7 @@ export default function Board() {
                         {n.message}
                       </p>
                       <span style={{ display: 'block', marginTop: '0.4rem', fontSize: '0.65rem', color: '#9CA3AF' }}>
-                         {new Date(n.created_at).toLocaleString('pt-BR')}
+                         {timeAgo(n.created_at)}
                       </span>
                     </div>
                   ))
