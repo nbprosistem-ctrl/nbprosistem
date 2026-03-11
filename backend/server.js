@@ -212,7 +212,6 @@ app.get('/api/health', (req, res) => {
 });
 
 const { createNotification } = require('./utils/notifier');
-const pool = require('./utils/database');
 
 server.listen(port, () => {
   console.log(`Backend server rodando na porta ${port} com Socket.IO`);
