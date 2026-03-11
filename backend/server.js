@@ -130,6 +130,9 @@ const initializeDatabase = async () => {
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_end_type VARCHAR(50);
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_end_date DATE;
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence_occurrences INTEGER;
+            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS review_status VARCHAR(50) DEFAULT 'PENDING';
+            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewer_id UUID REFERENCES users(id) ON DELETE SET NULL;
+            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS review_timestamp TIMESTAMP;
         `);
         console.log('Tabelas de BD verificadas e garantidas (Supabase).');
         // Inserir admin padrão separadamente (hash de bcrypt tem $ que conflita com template literal)

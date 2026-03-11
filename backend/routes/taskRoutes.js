@@ -143,14 +143,28 @@ router.patch('/:id/status', async (req, res) => {
     if (oldTaskQuery.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada.' });
     const oldTask = oldTaskQuery.rows[0];
 
-    // Proteção: Somente Admins podem remover uma tarefa da coluna Finalizado (DONE)
+    // Bloqueia usuários normais de mover a tarefa de "DONE" para outra coluna
     if (oldTask.status_column === 'DONE' && status_column !== 'DONE' && req.user.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Apenas administradores podem restaurar tarefas finalizadas.' });
     }
 
+    // Regra do Workflow: Impede Movimentação pra DONE se exigia Revisão mas não foi 'APPROVED' (Somente Admin pode forçar o Bypass)
+    if (status_column === 'DONE' && oldTask.review_status !== 'APPROVED' && req.user.role !== 'ADMIN') {
+       return res.status(403).json({ error: 'Esta tarefa precisa ser aprovada na sala de Revisão antes de ser finalizada.' });
+    }
+
+    // UPDATE FIELDS dinâmicos
+    let extraSet = "";
+    let extraParams = [];
+    
+    // Se a tarefa retornar ou entrar na etapa de REVISÃO (REVIEW), Zera a aprovação anterior pro Admin olhar de novo
+    if (status_column === 'REVIEW' && oldTask.status_column !== 'REVIEW') {
+      extraSet = ", review_status = 'PENDING', reviewer_id = NULL, review_timestamp = NULL";
+    }
+
     // 2. Atualiza o status do Cartão arrastado
     const result = await pool.query(
-      `UPDATE tasks SET status_column = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
+      `UPDATE tasks SET status_column = $1, updated_at = CURRENT_TIMESTAMP${extraSet} WHERE id = $2 RETURNING *`,
       [status_column, id]
     );
     
@@ -283,7 +297,75 @@ router.patch('/:id/status', async (req, res) => {
     res.json({ message: 'Status atualizado com sucesso.', task: result.rows[0] });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao mover a tarefa.' });
+    res.status(500).json({ error: 'Erro ao atualizar status da tarefa.' });
+  }
+});
+
+// PATCH /api/tasks/:id/review - Aprovar ou Solicitar Ajustes de uma Tarefa (Workflow Revisão)
+router.patch('/:id/review', async (req, res) => {
+  const { id } = req.params;
+  const { action, comment } = req.body; // 'APPROVE' ou 'REQUEST_CHANGES'
+
+  // Só Admins (neste sistema, Administradores são Revistadores) podem fazer Review
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Apenas administradores podem avaliar tarefas.' });
+  }
+
+  try {
+    const qTask = await pool.query('SELECT * FROM tasks WHERE id = $1', [id]);
+    if (qTask.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada.' });
+    const taskData = qTask.rows[0];
+
+    // Evita Aprovar Própria Tarefa
+    if (taskData.owner_id === req.user.id) {
+       return res.status(403).json({ error: 'Você não pode avaliar e aprovar sua própria tarefa.' });
+    }
+
+    if (action === 'APPROVE') {
+       const uRes = await pool.query(`
+         UPDATE tasks 
+         SET review_status = 'APPROVED', reviewer_id = $1, review_timestamp = CURRENT_TIMESTAMP
+         WHERE id = $2 RETURNING *`, [req.user.id, id]);
+
+       await logTaskHistory(id, req.user.id, 'APPROVED', `${req.user.name} aprovou esta tarefa.`);
+
+       if (taskData.owner_id) {
+         await createNotification(taskData.owner_id, 'Tarefa Aprovada', `Sua tarefa "${taskData.title}" foi aprovada!`, 'info', id, req.io);
+       }
+       if (req.io) req.io.emit('card_moved', uRes.rows[0]);
+
+       return res.json({ message: 'Tarefa aprovada para finalização.', task: uRes.rows[0] });
+    } 
+    
+    if (action === 'REQUEST_CHANGES') {
+       if (!comment || comment.trim() === '') {
+         return res.status(400).json({ error: 'Comentário obrigatório para solicitar alterações.' });
+       }
+       
+       const uRes = await pool.query(`
+         UPDATE tasks 
+         SET review_status = 'CHANGES_REQUESTED', status_column = 'DOING', reviewer_id = $1, review_timestamp = CURRENT_TIMESTAMP
+         WHERE id = $2 RETURNING *`, [req.user.id, id]);
+       
+       // Log de Historico + Injeção de Comentário para o dono ler o feedback
+       await logTaskHistory(id, req.user.id, 'CHANGES_REQUESTED', `${req.user.name} solicitou alterações: ${comment}`);
+       
+       // Incluir Comentário na Timeline Nativa do Card
+       await pool.query(`INSERT INTO task_comments (task_id, user_id, comment) VALUES ($1, $2, $3)`, [id, req.user.id, `(Revisão) Solicitadas Alterações: ${comment}`]);
+
+       if (taskData.owner_id) {
+         await createNotification(taskData.owner_id, 'Alterações Solicitadas', `${req.user.name} recusou a revisão de "${taskData.title}" e deixou um feedback.`, 'info', id, req.io);
+       }
+       if (req.io) req.io.emit('card_moved', uRes.rows[0]);
+
+       return res.json({ message: 'Alterações solicitadas e tarefa movida para Em Andamento.', task: uRes.rows[0] });
+    }
+
+    return res.status(400).json({ error: 'Ação de review inválida.' });
+
+  } catch (err) {
+    console.error('Erro na Revisão de Tarefa', err);
+    res.status(500).json({ error: 'Erro ao avaliar tarefa.' });
   }
 });
 

@@ -175,9 +175,16 @@ export default function Board() {
       return;
     }
 
-    // Atualização Otimista no Array FrontEnd
     const draggedTask = tasks.find(t => t.id === draggableId);
-    if(!draggedTask) return;
+    if (!draggedTask) return;
+
+    // Regra do Workflow de Aprovação
+    if (destination.droppableId === 'DONE' && draggedTask.review_status !== 'APPROVED' && user?.role !== 'ADMIN') {
+       alert("✋ Acesso Negado: Esta tarefa precisa passar pela coluna de Revisão e ser 'Aprovada' pelo Revisor antes de ser finalizada.");
+       return;
+    }
+
+    // Atualização Otimista no Array FrontEnd
 
     // Criar uma cópia isolada para atualizar a visualização IMEDIATAMENTE antes do servidor
     const updatedTasks = tasks.map(t => {

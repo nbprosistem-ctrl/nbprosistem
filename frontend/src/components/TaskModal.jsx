@@ -13,6 +13,11 @@ export default function TaskModal({ task, onClose }) {
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   
+  // Review Logic
+  const [reviewing, setReviewing] = useState(false);
+  const [showReviewInput, setShowReviewInput] = useState(false);
+  const [reviewComment, setReviewComment] = useState('');
+
   const [activeTab, setActiveTab] = useState('comments');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -141,6 +146,25 @@ export default function TaskModal({ task, onClose }) {
     if (p === 'ALTA') return 'rgba(239,68,68,0.1)';
     if (p === 'MEDIA') return 'rgba(245,158,11,0.1)';
     return 'rgba(16,185,129,0.1)';
+  };
+
+  const submitReview = async (action) => {
+    if (action === 'REQUEST_CHANGES' && !reviewComment.trim()) {
+      return alert('Por favor, informe o que precisa ser ajustado.');
+    }
+    setReviewing(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/review`, 
+      { action, comment: reviewComment },
+      { headers: { Authorization: `Bearer ${token}` }});
+      
+      onClose(); // Fecha o modal após enviar a decisão e deixa o WebSocket atualizar a tela geral
+    } catch(err) {
+      alert(err.response?.data?.error || 'Erro ao enviar avaliação.');
+    } finally {
+      setReviewing(false);
+    }
   };
 
   const renderActionIcon = (action) => {
@@ -316,6 +340,73 @@ export default function TaskModal({ task, onClose }) {
                 </div>
               )}
             </div>
+
+            {/* ===== APROVAÇÃO E REVISÃO ===== */}
+            {task.status_column === 'REVIEW' && (
+              <div style={{ marginTop: '1.75rem', borderTop: '1px solid #F3F4F6', paddingTop: '1.25rem' }}>
+                <h4 style={{ color: '#1F2937', margin: '0 0 1rem 0', fontWeight: '700', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={18} color="#F59E0B" /> Revisão Solicitada
+                </h4>
+                
+                <div style={{ background: '#FFFBEB', border: '1px solid #FEF3C7', padding: '1rem', borderRadius: '8px' }}>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', color: '#92400E' }}>
+                    Esta tarefa foi submetida para revisão. O status só permite avanço mediante aprovação final.
+                  </p>
+
+                  {user?.role === 'ADMIN' && user?.id !== task.owner_id ? (
+                    !showReviewInput ? (
+                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <button 
+                         disabled={reviewing}
+                         onClick={() => submitReview('APPROVE')}
+                         className="btn" style={{ background: '#10B981', flex: 1, padding: '0.6rem' }}>
+                          <Loader size={14} style={{ display: reviewing ? 'inline-block' : 'none' }} /> ✔️ Aprovar Arte
+                        </button>
+                        <button onClick={() => setShowReviewInput(true)}
+                         className="btn" style={{ background: '#FFFFFF', color: '#DC2626', border: '1px solid #DC2626', flex: 1, padding: '0.6rem' }}>
+                          ✖️ Solicitar Alteração
+                        </button>
+                     </div>
+                    ) : (
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.2s' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#92400E' }}>O que precisa ser alterado?</label>
+                        <textarea 
+                          autoFocus
+                          value={reviewComment} onChange={e => setReviewComment(e.target.value)}
+                          className="form-input" style={{ minHeight: '80px', background: '#FFFFFF', border: '1px solid #FCD34D' }}
+                          placeholder="Ex: Aumentar o contraste do banner..." 
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button onClick={() => setShowReviewInput(false)} style={{ background: 'none', border: 'none', color: '#6B7280', fontSize: '0.8rem', cursor: 'pointer', padding: '0 0.5rem' }}>Cancelar</button>
+                          <button disabled={reviewing || !reviewComment.trim()} onClick={() => submitReview('REQUEST_CHANGES')} className="btn" style={{ background: '#DC2626', padding: '0.4rem 1rem' }}>
+                             Enviar Feedback
+                          </button>
+                        </div>
+                     </div>
+                    )
+                  ) : (
+                    <div style={{ background: '#FEF3C7', color: '#92400E', padding: '0.5rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600' }}>
+                      Apenas Administradores podem avaliar e aprovar tarefas (que não sejam suas).
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Status Visual Recusado / Aprovado (Aparece em outras colunas tbm para histórico visual) */}
+            {task.review_status !== 'PENDING' && task.status_column !== 'REVIEW' && (
+              <div style={{ marginTop: '1.75rem', borderTop: '1px solid #F3F4F6', paddingTop: '1.25rem' }}>
+                 <div style={{ 
+                   display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 'bold',
+                   background: task.review_status === 'APPROVED' ? '#ECFDF5' : '#FEF2F2',
+                   color: task.review_status === 'APPROVED' ? '#059669' : '#DC2626',
+                   border: `1px solid ${task.review_status === 'APPROVED' ? '#A7F3D0' : '#FECACA'}`
+                 }}>
+                   {task.review_status === 'APPROVED' ? '🟢 Aprovado pelo Revisor' : '🔴 Alterações Requisitadas'}
+                 </div>
+              </div>
+            )}
+
           </div>
 
           {/* ——— DIREITA: Abas ——— */}
