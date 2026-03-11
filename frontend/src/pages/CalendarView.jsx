@@ -20,9 +20,7 @@ export default function CalendarView() {
         });
 
         let myTasks = res.data;
-        if (user.role !== 'ADMIN') {
-          myTasks = myTasks.filter(t => t.owner_id === user.id);
-        }
+        // O calendário agora mostra todas as tarefas da equipe, independente de quem as possui
 
         const calendarEvents = [];
 
