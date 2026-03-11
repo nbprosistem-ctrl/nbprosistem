@@ -1,0 +1,9 @@
+{
+  "name": "nextfy-deploy",
+  "version": "1.0.0",
+  "description": "Proxy package para deploy automático via Git",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "cd backend && npm install"
+  }
+}

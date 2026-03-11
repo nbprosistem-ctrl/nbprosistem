@@ -159,7 +159,7 @@ const columnNoteRoutes = require('./routes/columnNoteRoutes');
 const path = require('path');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
