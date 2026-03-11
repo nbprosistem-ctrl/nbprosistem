@@ -56,6 +56,19 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Título e Projeto são propriedades obrigatórias da tarefa.' });
   }
 
+  // Se for uma tarefa recorrente que não mandou a Dt de Vencimento, assume a Start Date + Hora
+  let final_due_date = due_date || null;
+  if (recurrence && recurrence !== 'NENHUMA' && recurrence_start_date) {
+    let dateStr = recurrence_start_date;
+    if (recurrence_time) {
+      dateStr += `T${recurrence_time.length === 5 ? recurrence_time + ':00' : recurrence_time}`;
+    } else {
+      dateStr += 'T00:00:00';
+    }
+    // Converter a string YYYY-MM-DDTHH:mm:ss pra OBJ Data e em seguida pra ISO
+    final_due_date = new Date(dateStr).toISOString();
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO tasks (
@@ -69,7 +82,7 @@ router.post('/', async (req, res) => {
         service_id || null, 
         owner_id || null, 
         priority || 'MEDIA', 
-        due_date || null, 
+        final_due_date, 
         recurrence || 'NENHUMA',
         recurrence_days || null,
         recurrence_time || null,
