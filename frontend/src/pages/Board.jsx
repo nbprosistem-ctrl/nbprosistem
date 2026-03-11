@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import axios from 'axios';
 import Sidebar from '../components/Sidebar';
 import { AuthContext } from '../context/AuthContext';
-import { Plus, Trash2, Calendar, User, Tag, ArrowRight, Search, SlidersHorizontal, Bell, StickyNote } from 'lucide-react';
+import { Plus, Trash2, Calendar, User, Tag, ArrowRight, Search, SlidersHorizontal, Bell, StickyNote, CheckCircle } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import TaskModal from '../components/TaskModal';
 import { useNavigate } from 'react-router-dom';
@@ -117,6 +117,12 @@ export default function Board() {
 
     if (!destination) return; // Soltou fora de uma coluna válida
     if (destination.droppableId === source.droppableId && destination.index === source.index) return; // Soltou no mesmo lugar
+
+    // Bloqueia usuários normais de retornarem tarefas finalizadas
+    if (source.droppableId === 'DONE' && destination.droppableId !== 'DONE' && user?.role !== 'ADMIN') {
+      alert("Apenas administradores podem restaurar tarefas finalizadas.");
+      return;
+    }
 
     // Atualização Otimista no Array FrontEnd
     const draggedTask = tasks.find(t => t.id === draggableId);
@@ -551,6 +557,8 @@ export default function Board() {
                                     background: snapshot.isDragging ? '#EEF2FF' : 'var(--bg-primary)',
                                     transform: snapshot.isDragging ? provided.draggableProps.style.transform : 'none',
                                     boxShadow: snapshot.isDragging ? 'var(--shadow-lg)' : 'none',
+                                    opacity: task.status_column === 'DONE' ? 0.6 : 1,
+                                    pointerEvents: (task.status_column === 'DONE' && user?.role !== 'ADMIN') ? 'none' : 'auto'
                                   }}
                                 >
                                   
@@ -573,7 +581,19 @@ export default function Board() {
                                     )}
                                   </div>
 
-                                  <h4 style={{ color: 'var(--text-primary)', fontSize: '0.9rem', fontWeight: '600', marginBottom: '0.5rem' }}>{task.title}</h4>
+                                  <h4 style={{ 
+                                    color: 'var(--text-primary)', 
+                                    fontSize: '0.9rem', 
+                                    fontWeight: '600', 
+                                    marginBottom: '0.5rem',
+                                    textDecoration: task.status_column === 'DONE' ? 'line-through' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}>
+                                    {task.status_column === 'DONE' && <CheckCircle size={14} color="#10b981" />}
+                                    {task.title}
+                                  </h4>
                                   
                                   {/* Serviço Auxiliar */}
                                   {task.service_name && (

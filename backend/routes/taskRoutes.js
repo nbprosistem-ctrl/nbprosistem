@@ -135,6 +135,11 @@ router.patch('/:id/status', async (req, res) => {
     if (oldTaskQuery.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada.' });
     const oldTask = oldTaskQuery.rows[0];
 
+    // Proteção: Somente Admins podem remover uma tarefa da coluna Finalizado (DONE)
+    if (oldTask.status_column === 'DONE' && status_column !== 'DONE' && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Apenas administradores podem restaurar tarefas finalizadas.' });
+    }
+
     // 2. Atualiza o status do Cartão arrastado
     const result = await pool.query(
       `UPDATE tasks SET status_column = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
