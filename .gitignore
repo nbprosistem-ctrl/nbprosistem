@@ -1,0 +1,33 @@
+# Dependências NODE
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Arquivos de ambiente e segredos
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.DS_Store
+
+# Builds e Distribuições
+dist/
+build/
+backend/dist/
+frontend/dist/
+frontend/build/
+
+# Logs e Uploads
+logs/
+*.log
+backend/uploads/
+backend/logger_error.log
+
+# Diretórios de Editores/IDEs
+.vscode/
+.idea/
+
+# Caches
+.eslintcache
+.npm/
