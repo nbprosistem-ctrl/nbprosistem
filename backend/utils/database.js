@@ -27,13 +27,14 @@ pool.on("error", (err) => {
 function buildQuery(text, params) {
   if (!params || params.length === 0) return text;
 
-  const PLACEHOLDER = "__PARAM__";
-
   let query = text;
 
   params.forEach((value, index) => {
     const escaped = format("%L", value);
-    query = query.replace(new RegExp(`\\$${index + 1}`, "g"), escaped);
+    // Usa uma função replacer () => escaped para prevenir que o símbolo '$' dentro de hashes 
+    // do bcrypt ou textos normais quebre a string de substituição.
+    // Usa (?!\d) para evitar que $1 dê match parcial em $10, $11, etc.
+    query = query.replace(new RegExp(`\\$${index + 1}(?!\\d)`, "g"), () => escaped);
   });
 
   return query;
