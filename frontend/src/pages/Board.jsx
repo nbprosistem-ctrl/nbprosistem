@@ -57,6 +57,7 @@ export default function Board() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const socketRef = useRef(null);
+  const notificationRef = useRef(null); // Ref para o container de notificações
 
   // Colunas do Kanban - Agora INCLUINDO BACKLOG
   const kanbanColumns = [
@@ -112,6 +113,47 @@ export default function Board() {
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch(err) { console.error('Falha ao marcar como lida', err); }
   };
+
+  const deleteNotification = async (e, id) => {
+    e.stopPropagation();
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (err) {
+      console.error('Falha ao excluir notificação', err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!window.confirm('Deseja remover todas as notificações?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications([]);
+    } catch (err) {
+      console.error('Falha ao limpar notificações', err);
+    }
+  };
+
+  // Clique externo para fechar notificações
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+    if (showNotifications) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showNotifications]);
 
   useEffect(() => {
     fetchData();
@@ -428,7 +470,9 @@ export default function Board() {
             </button>
 
             {showNotifications && (
-              <div style={{
+              <div 
+                ref={notificationRef}
+                style={{
                 position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 300,
                 background: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '12px',
                 boxShadow: '0 10px 30px rgba(0,0,0,0.12)', width: '300px', maxHeight: '400px', overflowY: 'auto',
@@ -436,7 +480,17 @@ export default function Board() {
               }}>
                 <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'white', zIndex: 2 }}>
                   <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#111827' }}>Notificações</h4>
-                  {unreadCount > 0 && <span style={{ fontSize: '0.75rem', color: '#EF4444', fontWeight: '600' }}>{unreadCount} novas</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={clearAllNotifications}
+                        style={{ background: 'none', border: 'none', color: '#6366f1', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer', padding: 0 }}
+                      >
+                        Limpar todas
+                      </button>
+                    )}
+                    {unreadCount > 0 && <span style={{ fontSize: '0.75rem', color: '#EF4444', fontWeight: '600' }}>{unreadCount} novas</span>}
+                  </div>
                 </div>
                 
                 {notifications.length === 0 ? (
@@ -452,10 +506,23 @@ export default function Board() {
                       style={{ 
                         padding: '0.75rem 1rem', borderBottom: '1px solid #F3F4F6',
                         background: n.read ? '#FFFFFF' : '#F8FAFC', cursor: 'pointer',
-                        transition: 'background 0.2s', opacity: n.read ? 0.7 : 1
+                        transition: 'background 0.2s', opacity: n.read ? 0.7 : 1,
+                        position: 'relative'
                       }}
+                      onMouseEnter={(e) => { e.currentTarget.querySelector('.notif-delete').style.opacity = '1'; }}
+                      onMouseLeave={(e) => { e.currentTarget.querySelector('.notif-delete').style.opacity = '0'; }}
                     >
-                      <h5 style={{ margin: '0 0 0.25rem', fontSize: '0.8rem', color: '#1F2937', fontWeight: n.read ? '500' : '700' }}>
+                      <button 
+                        className="notif-delete"
+                        onClick={(e) => deleteNotification(e, n.id)}
+                        style={{
+                          position: 'absolute', right: '8px', top: '8px', background: 'none', border: 'none',
+                          color: '#9CA3AF', cursor: 'pointer', opacity: 0, transition: 'opacity 0.2s', padding: '4px'
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <h5 style={{ margin: '0 0 0.25rem', fontSize: '0.8rem', color: '#1F2937', fontWeight: n.read ? '500' : '700', paddingRight: '20px' }}>
                         {n.title}
                       </h5>
                       <p style={{ margin: 0, fontSize: '0.75rem', color: '#6B7280', lineHeight: '1.3' }}>

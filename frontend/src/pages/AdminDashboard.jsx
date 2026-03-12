@@ -2,13 +2,21 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import Sidebar from '../components/Sidebar';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, MoreVertical, Shield, UserX, Trash2, UserCheck } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openMenuId, setOpenMenuId] = useState(null); // ID do usuário cujo menu está aberto
   const { user } = useContext(AuthContext);
+
+  // Fechar menu ao clicar fora
+  useEffect(() => {
+    function handleClickOutside() { setOpenMenuId(null); }
+    if (openMenuId) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openMenuId]);
 
   const fetchUsers = async () => {
     try {
@@ -137,52 +145,58 @@ export default function AdminDashboard() {
                           <span className="badge pending"><Clock size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Pendente</span>
                         )}
                       </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {u.status === 'PENDING' && u.id !== user.id && (
+                              <td style={{ textAlign: 'center' }}>
+                      {u.id === user.id ? (
+                        <span style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 'bold' }}>Sua conta</span>
+                      ) : (
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
                           <button 
-                            onClick={() => handleApprove(u.id)}
-                            className="btn btn-success"
-                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto' }}
+                            onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === u.id ? null : u.id); }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', padding: '4px', borderRadius: '4px' }}
+                            className="hover-bg-gray"
                           >
-                            Aprovar
+                            <MoreVertical size={18} />
                           </button>
-                        )}
-                        
-                        {u.id !== user.id && (
-                          <>
-                            <button 
-                              onClick={() => handleToggleRole(u.id, u.role)}
-                              className="btn"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: 'var(--bg-white)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                            >
-                              {u.role === 'ADMIN' ? 'Rebaixar' : 'Promover'}
-                            </button>
 
-                            <button 
-                              onClick={() => handleToggleBlock(u.id, u.is_blocked)}
-                              className="btn"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: u.is_blocked ? '#10B981' : '#F59E0B', color: 'white' }}
-                            >
-                              {u.is_blocked ? 'Desbloquear' : 'Bloquear'}
-                            </button>
+                          {openMenuId === u.id && (
+                            <div style={{
+                              position: 'absolute', right: '100%', top: 0, zIndex: 50,
+                              background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '0.4rem', minWidth: '180px',
+                              textAlign: 'left', marginRight: '8px', animation: 'fadeIn 0.15s'
+                            }}>
+                              {u.status === 'PENDING' && (
+                                <button onClick={() => handleApprove(u.id)} className="dropdown-item">
+                                  <UserCheck size={14} /> Aprovar agora
+                                </button>
+                              )}
+                              
+                              <button onClick={() => handleToggleRole(u.id, u.role)} className="dropdown-item">
+                                <Shield size={14} /> {u.role === 'ADMIN' ? 'Rebaixar p/ Colaborador' : 'Promover para Admin'}
+                              </button>
 
-                            <button 
-                              onClick={() => handleDeleteUser(u.id)}
-                              className="btn"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: '#EF4444', color: 'white' }}
-                            >
-                              Excluir
-                            </button>
-                          </>
-                        )}
+                              <button 
+                                onClick={() => handleToggleBlock(u.id, u.is_blocked)} 
+                                className="dropdown-item"
+                                style={{ color: u.is_blocked ? '#10B981' : '#F59E0B' }}
+                              >
+                                <UserX size={14} /> {u.is_blocked ? 'Desbloquear usuário' : 'Bloquear usuário'}
+                              </button>
 
-                        {u.id === user.id && (
-                          <span style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 'bold' }}>Sua conta</span>
-                        )}
-                      </div>
-                    </td>
+                              <hr style={{ border: 'none', borderTop: '1px solid #F3F4F6', margin: '4px 0' }} />
+                              
+                              <button 
+                                onClick={() => handleDeleteUser(u.id)} 
+                                className="dropdown-item"
+                                style={{ color: '#EF4444' }}
+                              >
+                                <Trash2 size={14} /> Excluir usuário
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </td>            </td>
                   </tr>
                 ))}
                 {users.length === 0 && (

@@ -49,4 +49,32 @@ router.patch('/:id/read', async (req, res) => {
     }
   });
 
+// DELETE /api/notifications - Excluir TODAS as notificações do usuário logado
+router.delete('/', async (req, res) => {
+  const userId = req.user.id;
+  try {
+    await pool.query('DELETE FROM notifications WHERE user_id = $1', [userId]);
+    res.json({ message: 'Todas as notificações foram removidas.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao remover todas as notificações.' });
+  }
+});
+
+// DELETE /api/notifications/:id - Excluir uma única notificação
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  try {
+    const result = await pool.query('DELETE FROM notifications WHERE id = $1 AND user_id = $2 RETURNING id', [id, userId]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Notificação não encontrada.' });
+    }
+    res.json({ message: 'Notificação removida.', id: result.rows[0].id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao remover notificação.' });
+  }
+});
+
 module.exports = router;
