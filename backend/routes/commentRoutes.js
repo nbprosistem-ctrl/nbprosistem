@@ -79,21 +79,26 @@ router.post('/:id/comments', async (req, res) => {
     }
     
     // Verifica se houve menção @
-    const mentions = comment.match(/@(\w+)/g);
+    const mentions = comment.match(/@([\wÀ-ú]+(?:\s[\wÀ-ú]+)?)/g);
     if(mentions) {
-        // Para cada menção, tenta achar o user_id no db
         for(let m of mentions) {
-            const mentionedName = m.substring(1); // Tira o @
-            const userQ = await pool.query('SELECT id FROM users WHERE name ILIKE $1', [`%${mentionedName}%`]);
+            const mentionedName = m.substring(1).trim(); 
+            // Busca usuário por nome exato ou similar
+            const userQ = await pool.query('SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1', [`%${mentionedName}%`]);
             if(userQ.rows.length > 0) {
                 const mentionedUserId = userQ.rows[0].id;
-                // Não notificar a si mesmo se por acaso autotaggear
+                const mentionedUserName = userQ.rows[0].name;
+
+                // Salvar na tabela comment_mentions
+                await pool.query('INSERT INTO comment_mentions (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [newCommentId, mentionedUserId]);
+
+                // Não notificar a si mesmo
                 if(mentionedUserId !== req.user.id){
                     await createNotification(
                         mentionedUserId,
                         'Você foi mencionado!',
                         `${req.user.name} citou você na Tarefa "${taskData.title}".`,
-                        'task_comment',
+                        'mention',
                         id,
                         req.io
                     );

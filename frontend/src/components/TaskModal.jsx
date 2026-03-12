@@ -9,6 +9,7 @@ export default function TaskModal({ task, users = [], onClose }) {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [mentionSuggestions, setMentionSuggestions] = useState([]);
 
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -145,9 +146,17 @@ export default function TaskModal({ task, users = [], onClose }) {
   };
 
   const renderCommentWithMentions = (text) => {
-    return text.split(/(@\w+)/g).map((part, i) =>
+    // Regex para capturar @Nome Completo ou @Nome
+    return text.split(/(@[\wÀ-ú]+\s?[\wÀ-ú]*)/g).map((part, i) =>
       part.startsWith('@')
-        ? <span key={i} style={{ color: 'var(--accent)', fontWeight: 'bold' }}>{part}</span>
+        ? <span key={i} style={{ 
+            color: '#6c4eff', 
+            fontWeight: '600', 
+            background: 'rgba(108,76,255,0.08)', 
+            padding: '2px 6px', 
+            borderRadius: '4px',
+            display: 'inline-block'
+          }}>{part}</span>
         : <span key={i}>{part}</span>
     );
   };
@@ -608,16 +617,49 @@ export default function TaskModal({ task, users = [], onClose }) {
 
             {/* Footer de comentário */}
             {activeTab === 'comments' && (
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid #F3F4F6', background: '#FAFAFA' }}>
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid #F3F4F6', background: '#FAFAFA', position: 'relative' }}>
                 <form onSubmit={handleSendComment} style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
                     type="text"
                     className="form-input"
                     placeholder="Escreva um comentário... (Use @ para mencionar)"
                     value={newComment}
-                    onChange={e => setNewComment(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewComment(val);
+                      
+                      const lastAt = val.lastIndexOf('@');
+                      if (lastAt !== -1 && lastAt >= val.length - 20) {
+                        const query = val.substring(lastAt + 1).toLowerCase();
+                        const matches = localUsers.filter(u => u.name.toLowerCase().includes(query)).slice(0, 5);
+                        setMentionSuggestions(matches);
+                      } else {
+                        setMentionSuggestions([]);
+                      }
+                    }}
                     style={{ flex: 1, background: '#FFFFFF', fontSize: '0.875rem' }}
                   />
+                  
+                  {mentionSuggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', bottom: '100%', left: '1.25rem', zIndex: 50,
+                      background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px',
+                      boxShadow: '0 -4px 12px rgba(0,0,0,0.1)', padding: '4px', minWidth: '200px'
+                    }}>
+                      {mentionSuggestions.map(u => (
+                        <button key={u.id} type="button" className="dropdown-item" 
+                          onClick={() => {
+                            const lastAt = newComment.lastIndexOf('@');
+                            const prefix = newComment.substring(0, lastAt);
+                            setNewComment(prefix + '@' + u.name + ' ');
+                            setMentionSuggestions([]);
+                          }}
+                        >
+                          <User size={14} /> {u.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <button type="submit" className="btn" disabled={!newComment.trim() || sending}
                     style={{ width: 'auto', padding: '0 1rem', flexShrink: 0 }}>
                     <Send size={16} />

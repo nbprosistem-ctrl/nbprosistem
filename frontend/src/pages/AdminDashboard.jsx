@@ -145,7 +145,8 @@ export default function AdminDashboard() {
                           <span className="badge pending"><Clock size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Pendente</span>
                         )}
                       </div>
-                              <td style={{ textAlign: 'center' }}>
+                    </td>
+                    <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
                       {u.id === user.id ? (
                         <span style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 'bold' }}>Sua conta</span>
                       ) : (
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       )}
-                    </td>            </td>
+                    </td>
                   </tr>
                 ))}
                 {users.length === 0 && (
