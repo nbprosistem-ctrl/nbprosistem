@@ -68,45 +68,52 @@ export default function Vault() {
   );
 
   return (
-    <div className="layout-container">
+    <div className="app-layout">
       <Sidebar />
-      <main className="main-content">
-        {/* Header Section */}
-        <header className="page-header" style={{ marginBottom: '2rem' }}>
-          <div>
-            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Shield size={28} color="var(--accent)" /> Cofre de Senhas
-            </h1>
-            <p className="page-subtitle">Armazenamento seguro de credenciais e acessos.</p>
+      <div className="app-main">
+        {/* Topbar Padrão */}
+        <header className="topbar">
+          <h1 className="topbar-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Shield size={22} color="var(--accent)" /> Cofre de Senhas
+          </h1>
+          <div className="topbar-right">
+            {user?.role === 'ADMIN' && (
+              <button className="btn" onClick={() => { setSelectedEntry(null); setShowModal(true); }}>
+                <Plus size={16} /> Novo Acesso
+              </button>
+            )}
           </div>
-          {user?.role === 'ADMIN' && (
-            <button className="btn btn-primary" onClick={() => { setSelectedEntry(null); setShowModal(true); }}>
-              <Plus size={18} /> Novo Acesso
-            </button>
-          )}
         </header>
 
-        {/* Toolbar */}
-        <div style={{
-          background: '#fff', padding: '1rem', borderRadius: '12px',
-          border: '1px solid #E5E7EB', marginBottom: '2rem',
-          display: 'flex', alignItems: 'center', gap: '1rem'
-        }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input 
-              type="text" 
-              placeholder="Buscar por título, login ou descrição..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem',
-                borderRadius: '8px', border: '1px solid #D1D5DB',
-                fontSize: '0.9rem', outline: 'none'
-              }}
-            />
+        <main className="page-content">
+          <div>
+            <p className="page-subtitle" style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              Armazenamento seguro de credenciais e acessos da equipe.
+            </p>
           </div>
-        </div>
+
+          {/* Toolbar de Busca */}
+          <div style={{
+            background: '#fff', padding: '0.75rem 1rem', borderRadius: '12px',
+            border: '1px solid var(--border)', marginBottom: '2rem',
+            display: 'flex', alignItems: 'center', gap: '1rem',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={18} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" 
+                placeholder="Buscar por título, login ou descrição..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  width: '100%', padding: '0.55rem 1rem 0.55rem 2.5rem',
+                  borderRadius: '8px', border: '1px solid #D1D5DB',
+                  fontSize: '0.875rem', outline: 'none', background: '#F9FAFB'
+                }}
+              />
+            </div>
+          </div>
 
         {/* Grid of Cards */}
         {loading ? (
@@ -153,13 +160,14 @@ export default function Vault() {
             position: 'fixed', bottom: '2rem', right: '2rem',
             background: toast.type === 'error' ? '#EF4444' : '#10B981',
             color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '8px',
-            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 2000,
+            boxShadow: 'var(--shadow-lg)', zIndex: 2000,
             animation: 'fadeInUp 0.3s ease-out', fontWeight: '500'
           }}>
             {toast.message}
           </div>
         )}
       </main>
+      </div>
 
       <style>{`
         @keyframes fadeInUp {

@@ -34,7 +34,7 @@ export default function VaultModal({ entry, onClose, onSave, onToast }) {
     try {
       setLoadingUsers(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Filtra apenas colaboradores (opcional, mas comum)
