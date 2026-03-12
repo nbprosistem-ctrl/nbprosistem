@@ -92,8 +92,16 @@ export default function Reports() {
 
           <div style={{ background: 'var(--bg-white)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-              <span>Pendente (WIP)</span>
+              <span>Vencem Hoje</span>
               <Clock size={20} color="#f59e0b" />
+            </div>
+            <h3 style={{ fontSize: '2.5rem', color: '#f59e0b', fontWeight: 'bold' }}>{widgets.dueTodayTasks || 0}</h3>
+          </div>
+
+          <div style={{ background: 'var(--bg-white)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+              <span>Pendente (WIP)</span>
+              <Activity size={20} color="#6366f1" />
             </div>
             <h3 style={{ fontSize: '2.5rem', color: 'var(--text-primary)', fontWeight: 'bold' }}>{widgets.pendingTasks}</h3>
           </div>

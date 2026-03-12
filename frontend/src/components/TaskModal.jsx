@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { X, Send, Clock, User, Tag, Calendar, AlertCircle, Paperclip, Download, FileText, Image as ImageIcon, Loader, Plus, Activity } from 'lucide-react';
 
-export default function TaskModal({ task, onClose }) {
+export default function TaskModal({ task, users = [], onClose }) {
   const { user } = useContext(AuthContext);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -21,6 +21,8 @@ export default function TaskModal({ task, onClose }) {
   const [activeTab, setActiveTab] = useState('comments');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  
+  const [reassigning, setReassigning] = useState(false);
 
   useEffect(() => {
     fetchComments();
@@ -142,6 +144,36 @@ export default function TaskModal({ task, onClose }) {
     return '#10B981';
   };
 
+  const getDueDateStatus = (dateStr) => {
+    if (!dateStr) return { color: '#6B7280', label: '', iconColor: '#9CA3AF' };
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const dueDate = new Date(dateStr);
+    const due = new Date(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
+
+    if (due < today) return { 
+      color: '#DC2626', 
+      label: 'atrasada', 
+      iconColor: '#DC2626',
+      message: 'Esta tarefa está atrasada.'
+    };
+    if (due.getTime() === today.getTime()) return { 
+      color: '#f59e0b', 
+      label: 'hoje', 
+      iconColor: '#f59e0b',
+      message: 'Esta tarefa vence hoje.'
+    };
+    
+    return { 
+      color: '#1F2937', 
+      label: 'no prazo', 
+      iconColor: '#10B981',
+      message: ''
+    };
+  };
+
   const getPriorityBg = (p) => {
     if (p === 'ALTA') return 'rgba(239,68,68,0.1)';
     if (p === 'MEDIA') return 'rgba(245,158,11,0.1)';
@@ -164,6 +196,27 @@ export default function TaskModal({ task, onClose }) {
       alert(err.response?.data?.error || 'Erro ao enviar avaliação.');
     } finally {
       setReviewing(false);
+    }
+  };
+
+  const handleReassign = async (newOwnerId) => {
+    if (user?.role !== 'ADMIN') return;
+    setReassigning(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/responsible`, 
+        { owner_id: newOwnerId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // O fetchData do Board cuidará da atualização ao fechar, 
+      // mas podemos dar um feedback visual ou apenas deixar o select atualizar.
+      // Como o TaskModal recebe a task via prop, ele não vai atualizar sozinho sem fechar/reabrir
+      // a menos que o Board re-renderize via WebSocket ou o usuário feche o modal.
+      // O endpoint emite 'card_moved', então se o board estiver ouvindo, ele atualiza.
+    } catch (err) {
+      alert('Falha ao reatribuir tarefa.');
+    } finally {
+      setReassigning(false);
     }
   };
 
@@ -251,9 +304,26 @@ export default function TaskModal({ task, onClose }) {
               {/* Responsável */}
               <div style={{ background: '#F9FAFB', border: '1px solid #F3F4F6', borderRadius: '10px', padding: '0.9rem' }}>
                 <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Responsável</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1F2937', fontSize: '0.875rem', fontWeight: '500' }}>
-                  <User size={15} color="var(--accent)" /> {task.owner_name || 'Não atribuído'}
-                </div>
+                {user?.role === 'ADMIN' ? (
+                  <select 
+                    value={task.owner_id || ''} 
+                    onChange={(e) => handleReassign(e.target.value)}
+                    disabled={reassigning}
+                    style={{
+                      width: '100%', padding: '0.2rem 0.4rem', borderRadius: '6px', border: '1px solid #E5E7EB',
+                      fontSize: '0.875rem', fontWeight: '500', color: '#1F2937', background: '#FFFFFF', outline: 'none'
+                    }}
+                  >
+                    <option value="">Sem dono</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1F2937', fontSize: '0.875rem', fontWeight: '500' }}>
+                    <User size={15} color="var(--accent)" /> {task.owner_name || 'Não atribuído'}
+                  </div>
+                )}
               </div>
 
               {/* Data de Entrega */}
@@ -261,9 +331,9 @@ export default function TaskModal({ task, onClose }) {
                 <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Data de Entrega</p>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '500',
-                  color: new Date(task.due_date) < new Date() && task.status_column !== 'DONE' ? '#DC2626' : '#1F2937'
+                  color: task.status_column !== 'DONE' ? getDueDateStatus(task.due_date).color : '#1F2937'
                 }}>
-                  <Calendar size={15} color={new Date(task.due_date) < new Date() && task.status_column !== 'DONE' ? '#DC2626' : '#10B981'} />
+                  <Calendar size={15} color={task.status_column !== 'DONE' ? getDueDateStatus(task.due_date).iconColor : '#10B981'} />
                   {task.due_date ? formatDate(task.due_date) : 'Sem Prazo'}
                 </div>
               </div>
@@ -285,10 +355,16 @@ export default function TaskModal({ task, onClose }) {
               </div>
             </div>
 
-            {/* Alerta de atraso */}
-            {new Date(task.due_date) < new Date() && task.status_column !== 'DONE' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(220,38,38,0.08)', color: '#DC2626', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', border: '1px solid rgba(220,38,38,0.15)' }}>
-                <AlertCircle size={16} /> Esta tarefa está atrasada.
+            {/* Alerta de atraso / Hoje */}
+            {task.status_column !== 'DONE' && getDueDateStatus(task.due_date).message && (
+              <div style={{ 
+                display: 'flex', alignItems: 'center', gap: '0.5rem', 
+                background: getDueDateStatus(task.due_date).label === 'atrasada' ? 'rgba(220,38,38,0.08)' : 'rgba(245,158,11,0.08)', 
+                color: getDueDateStatus(task.due_date).color, 
+                padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', 
+                border: `1px solid ${getDueDateStatus(task.due_date).label === 'atrasada' ? 'rgba(220,38,38,0.15)' : 'rgba(245,158,11,0.15)'}` 
+              }}>
+                <AlertCircle size={16} /> {getDueDateStatus(task.due_date).message}
               </div>
             )}
 

@@ -301,6 +301,58 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
+// PATCH /api/tasks/:id/responsible - Alterar o responsável da tarefa (Apenas Admin)
+router.patch('/:id/responsible', async (req, res) => {
+  const { id } = req.params;
+  const { owner_id } = req.body;
+
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Apenas administradores podem reatribuir tarefas.' });
+  }
+
+  try {
+    // Buscar nomes para o histórico
+    const oldTaskQuery = await pool.query(`
+      SELECT t.owner_id, u.name as old_owner_name 
+      FROM tasks t 
+      LEFT JOIN users u ON t.owner_id = u.id 
+      WHERE t.id = $1
+    `, [id]);
+
+    if (oldTaskQuery.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada.' });
+    const oldOwnerName = oldTaskQuery.rows[0].old_owner_name || 'Ninguém';
+
+    const newOwnerQuery = await pool.query('SELECT name FROM users WHERE id = $1', [owner_id]);
+    const newOwnerName = newOwnerQuery.rows.length > 0 ? newOwnerQuery.rows[0].name : 'Ninguém';
+
+    const result = await pool.query(
+      'UPDATE tasks SET owner_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [owner_id || null, id]
+    );
+
+    await logTaskHistory(id, req.user.id, 'MOVE', `Admin alterou o responsável de "${oldOwnerName}" para "${newOwnerName}".`);
+
+    // Notificar o novo dono, se houver
+    if (owner_id && owner_id !== req.user.id) {
+       await createNotification(
+         owner_id,
+         'Tarefa Reatribuída',
+         `Você agora é o responsável por: ${result.rows[0].title}`,
+         'task_assigned',
+         id,
+         req.io
+       );
+    }
+
+    if (req.io) req.io.emit('card_moved', result.rows[0]);
+
+    res.json({ message: 'Responsável atualizado com sucesso.', task: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao reatribuir tarefa.' });
+  }
+});
+
 // PATCH /api/tasks/:id/review - Aprovar ou Solicitar Ajustes de uma Tarefa (Workflow Revisão)
 router.patch('/:id/review', async (req, res) => {
   const { id } = req.params;

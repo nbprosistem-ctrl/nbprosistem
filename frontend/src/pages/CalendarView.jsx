@@ -30,6 +30,18 @@ export default function CalendarView() {
           return '#10b981';
         };
 
+        const getStatusColor = (dateStr, status) => {
+          if (!dateStr || status === 'DONE') return null;
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const [y, m, d] = dateStr.split('-').map(Number);
+          const due = new Date(y, m - 1, d);
+          
+          if (due < today) return '#DC2626'; // Vermelho Atraso
+          if (due.getTime() === today.getTime()) return '#f59e0b'; // Laranja Hoje
+          return null;
+        };
+
         // Converte strings ISO do Supabase para string de data local (YYYY-MM-DD)
         // sem deslocamento de timezone (evita o bug de "dia anterior")
         const toLocalDateStr = (isoStr) => {
@@ -54,7 +66,8 @@ export default function CalendarView() {
             title: `[${task.project_name || 'Sem projeto'}] ${task.title}`,
             date: baseDate + timeString,
             backgroundColor: getColor(task.priority),
-            borderColor: getColor(task.priority),
+            borderColor: getStatusColor(baseDate, task.status_column) || getColor(task.priority),
+            borderWidth: getStatusColor(baseDate, task.status_column) ? '3px' : '1px',
             extendedProps: { isGhost: false }
           });
 

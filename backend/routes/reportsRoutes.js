@@ -14,16 +14,20 @@ router.get('/metrics', async (req, res) => {
   }
 
   try {
-    // 1. Contadores Gerais e Widgets
-    const totalQuery = await pool.query('SELECT COUNT(*) FROM tasks');
-    const totalTasks = parseInt(totalQuery.rows[0].count);
+    // 1. Contadores Gerais e Widgets (Excluem tarefas DONE do total ativo)
+    const totalQuery = await pool.query("SELECT COUNT(*) FROM tasks WHERE status_column != 'DONE'");
+    const totalActiveTasks = parseInt(totalQuery.rows[0].count);
 
     const doneQuery = await pool.query("SELECT COUNT(*) FROM tasks WHERE status_column = 'DONE'");
     const completedTasks = parseInt(doneQuery.rows[0].count);
 
-    // Tarefas atrasadas (Não estão DONE e due_date é menor que HOJE)
+    // Tarefas atrasadas (Não estão DONE e due_date é estritamente menor que HOJE)
     const delayedQuery = await pool.query("SELECT COUNT(*) FROM tasks WHERE status_column != 'DONE' AND due_date < CURRENT_DATE");
     const delayedTasks = parseInt(delayedQuery.rows[0].count);
+
+    // Tarefas que vencem hoje (Status Warning)
+    const todayQuery = await pool.query("SELECT COUNT(*) FROM tasks WHERE status_column != 'DONE' AND due_date = CURRENT_DATE");
+    const dueTodayTasks = parseInt(todayQuery.rows[0].count);
 
     // 2. Gráfico: Tarefas por Status
     const statusQuery = await pool.query(`
@@ -54,10 +58,11 @@ router.get('/metrics', async (req, res) => {
 
     res.json({
       widgets: {
-        totalTasks,
+        totalTasks: totalActiveTasks,
         completedTasks,
         delayedTasks,
-        pendingTasks: totalTasks - completedTasks
+        dueTodayTasks,
+        pendingTasks: totalActiveTasks - delayedTasks - dueTodayTasks
       },
       charts: {
         tasksByStatus,

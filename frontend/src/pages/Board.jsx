@@ -284,6 +284,23 @@ export default function Board() {
     return 'Baixa';
   };
 
+  const getDueDateStatus = (dateStr) => {
+    if (!dateStr) return { color: 'var(--text-secondary)', label: '' };
+    
+    // Compara apenas a data (YYYY-MM-DD) ignorando o fuso horário para consistência
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    const dueDate = new Date(dateStr);
+    // Ajuste para considerar a data de entrada como UTC/Local sem confusão de horas
+    const due = new Date(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), dueDate.getUTCDate());
+
+    if (due < today) return { color: '#DC2626', label: 'atrasada', iconColor: '#DC2626' };
+    if (due.getTime() === today.getTime()) return { color: '#f59e0b', label: 'hoje', iconColor: '#f59e0b' };
+    
+    return { color: 'var(--text-secondary)', label: 'no prazo', iconColor: 'var(--text-secondary)' };
+  };
+
   /* ====== NOTA DE COLUNA ====== */
   const saveColumnNote = async (columnId, note) => {
     try {
@@ -775,9 +792,12 @@ export default function Board() {
                                     {task.due_date && (
                                       <span style={{ 
                                         fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem',
-                                        color: new Date(task.due_date) < new Date() && task.status_column !== 'DONE' ? '#DC2626' : 'var(--text-secondary)'
+                                        color: task.status_column !== 'DONE' ? getDueDateStatus(task.due_date).color : 'var(--text-secondary)',
+                                        fontWeight: (task.status_column !== 'DONE' && getDueDateStatus(task.due_date).label !== 'no prazo') ? 'bold' : 'normal'
                                       }}>
-                                        <Calendar size={12} /> {formatDate(task.due_date)}
+                                        <Calendar size={12} color={task.status_column !== 'DONE' ? getDueDateStatus(task.due_date).iconColor : 'var(--text-secondary)'} /> 
+                                        {formatDate(task.due_date)}
+                                        {task.status_column !== 'DONE' && getDueDateStatus(task.due_date).label === 'hoje' && " (Hoje)"}
                                       </span>
                                     )}
                                   </div>
