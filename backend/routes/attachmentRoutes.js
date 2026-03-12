@@ -4,29 +4,12 @@ const { authenticateToken } = require('../middleware/authMiddleware');
 const { logTaskHistory } = require('../utils/logger');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const supabase = require('../utils/supabase');
 
 const router = express.Router();
 
-// Garantir que a pasta de uploads exista
-const uploadDir = path.join(__dirname, '../uploads');
-if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Configuração refinada do Multer para Storage Local
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, uploadDir); 
-    },
-    filename: function (req, file, cb) {
-      // Cria um nome único com timestamp e um número ramdom para previnir colisão
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      // Remove espaços originais e adiciona a extensão original
-      const cleanFileName = file.originalname.trim().replace(/\s+/g, '-');
-      cb(null, uniqueSuffix + '-' + cleanFileName);
-    }
-});
+// Configuração do Multer para Storage em Memória (Necessário para Buffer)
+const storage = multer.memoryStorage();
 
 // Limite de 20MB para suportar vídeos pequenos e grandes PDFs
 const upload = multer({ 
@@ -72,15 +55,38 @@ router.post('/:id/attachments', upload.single('file'), async (req, res) => {
   }
 
   try {
-    const fileUrl = `/uploads/${req.file.filename}`;
     const fileName = req.file.originalname;
     const fileType = req.file.mimetype;
+    const fileBuffer = req.file.buffer;
 
+    // Gerar nome único para o Supabase
+    const uniqueFileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}-${fileName.trim().replace(/\s+/g, '-')}`;
+    const filePath = `tasks/${id}/${uniqueFileName}`;
+
+    // Upload para o Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('task-attachments')
+      .upload(filePath, fileBuffer, {
+        contentType: fileType,
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Erro no upload Supabase:', uploadError);
+      return res.status(500).json({ error: 'Erro ao enviar arquivo para o storage.' });
+    }
+
+    // Obter URL pública
+    const { data: { publicUrl } } = supabase.storage
+      .from('task-attachments')
+      .getPublicUrl(filePath);
+
+    // Salvar no Banco de Dados SQL
     const newAttachment = await pool.query(`
       INSERT INTO task_attachments (task_id, user_id, file_name, file_url, file_type)
       VALUES ($1, $2, $3, $4, $5)
       RETURNING *
-    `, [id, userId, fileName, fileUrl, fileType]);
+    `, [id, userId, fileName, publicUrl, fileType]);
 
     // Buscar o nome de usuário para retornar completo ao frontend imediatamente
     const userQuery = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -100,7 +106,7 @@ router.post('/:id/attachments', upload.single('file'), async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Erro ao registrar anexo no banco.' });
+    res.status(500).json({ error: 'Erro ao processar anexo.' });
   }
 });
 
