@@ -826,6 +826,7 @@ export default function Board() {
         {selectedTask && (
           <TaskModal 
             task={selectedTask} 
+            users={users}
             onClose={() => setSelectedTask(null)} 
           />
         )}

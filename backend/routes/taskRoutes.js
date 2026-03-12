@@ -41,6 +41,17 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Listar usuários para atribuição (GET /api/tasks/users-list)
+router.get('/users-list', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT id, name FROM users WHERE status = \'APPROVED\' ORDER BY name ASC');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao buscar lista de usuários.' });
+  }
+});
+
 // Criar nova Tarefa (POST /api/tasks)
 router.post('/', async (req, res) => {
   // Qualquer usuário autenticado (Aprovado) pode criar tarefas. 
@@ -350,6 +361,63 @@ router.patch('/:id/responsible', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao reatribuir tarefa.' });
+  }
+});
+
+// PUT /api/tasks/:id - Atualização genérica de tarefa (conforme solicitado para responsible_user_id)
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { responsible_user_id, title: newTitle, description: newDesc, priority: newPriority, due_date: newDueDate } = req.body;
+
+  try {
+    // Se enviou responsible_user_id, tratamos como owner_id
+    if (responsible_user_id !== undefined) {
+      if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ error: 'Apenas administradores podem reatribuir tarefas.' });
+      }
+
+      // Buscar nomes para o histórico
+      const oldTaskQuery = await pool.query(`
+        SELECT t.owner_id, u.name as old_owner_name 
+        FROM tasks t 
+        LEFT JOIN users u ON t.owner_id = u.id 
+        WHERE t.id = $1
+      `, [id]);
+
+      if (oldTaskQuery.rows.length === 0) return res.status(404).json({ error: 'Tarefa não encontrada.' });
+      const oldOwnerName = oldTaskQuery.rows[0].old_owner_name || 'Ninguém';
+
+      const newOwnerQuery = await pool.query('SELECT name FROM users WHERE id = $1', [responsible_user_id]);
+      const newOwnerName = (newOwnerQuery.rows.length > 0) ? newOwnerQuery.rows[0].name : 'Ninguém';
+
+      const result = await pool.query(
+        'UPDATE tasks SET owner_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+        [responsible_user_id || null, id]
+      );
+
+      await logTaskHistory(id, req.user.id, 'MOVE', `Admin alterou o responsável de "${oldOwnerName}" para "${newOwnerName}" via PUT.`);
+
+      if (responsible_user_id && responsible_user_id !== req.user.id) {
+        await createNotification(
+          responsible_user_id,
+          'Tarefa Reatribuída',
+          `Você agora é o responsável por: ${result.rows[0].title}`,
+          'task_assigned',
+          id,
+          req.io
+        );
+      }
+
+      if (req.io) req.io.emit('card_moved', result.rows[0]);
+      return res.json({ message: 'Tarefa atualizada com sucesso.', task: result.rows[0] });
+    }
+
+    // Outras atualizações podem ser adicionadas aqui se necessário
+    res.status(400).json({ error: 'Nenhum campo válido para atualização fornecido.' });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao atualizar tarefa.' });
   }
 });
 

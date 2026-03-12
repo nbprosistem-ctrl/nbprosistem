@@ -23,12 +23,31 @@ export default function TaskModal({ task, users = [], onClose }) {
   const [loadingHistory, setLoadingHistory] = useState(true);
   
   const [reassigning, setReassigning] = useState(false);
+  const [localUsers, setLocalUsers] = useState([]);
+  const [selectedOwnerId, setSelectedOwnerId] = useState(task.owner_id || '');
 
   useEffect(() => {
     fetchComments();
     fetchAttachments();
     fetchHistory();
+    fetchUsersList();
   }, [task.id]);
+
+  const fetchUsersList = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/users-list`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setLocalUsers(res.data);
+    } catch (err) {
+      console.error('Erro ao buscar lista de usuários', err);
+    }
+  };
+
+  useEffect(() => {
+    setSelectedOwnerId(task.owner_id || '');
+  }, [task.owner_id]);
 
   const fetchHistory = async () => {
     try {
@@ -201,20 +220,22 @@ export default function TaskModal({ task, users = [], onClose }) {
 
   const handleReassign = async (newOwnerId) => {
     if (user?.role !== 'ADMIN') return;
+    
+    // Atualização visual imediata
+    setSelectedOwnerId(newOwnerId);
     setReassigning(true);
+    
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/responsible`, 
-        { owner_id: newOwnerId },
+      // O endpoint solicitado pelo usuário é PUT /tasks/:taskId com responsible_user_id
+      await axios.put(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}`, 
+        { responsible_user_id: newOwnerId === '' ? null : newOwnerId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // O fetchData do Board cuidará da atualização ao fechar, 
-      // mas podemos dar um feedback visual ou apenas deixar o select atualizar.
-      // Como o TaskModal recebe a task via prop, ele não vai atualizar sozinho sem fechar/reabrir
-      // a menos que o Board re-renderize via WebSocket ou o usuário feche o modal.
-      // O endpoint emite 'card_moved', então se o board estiver ouvindo, ele atualiza.
     } catch (err) {
       alert('Falha ao reatribuir tarefa.');
+      // Reverte se falhar
+      setSelectedOwnerId(task.owner_id || '');
     } finally {
       setReassigning(false);
     }
@@ -306,7 +327,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                 <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', fontWeight: '600', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Responsável</p>
                 {user?.role === 'ADMIN' ? (
                   <select 
-                    value={task.owner_id || ''} 
+                    value={selectedOwnerId} 
                     onChange={(e) => handleReassign(e.target.value)}
                     disabled={reassigning}
                     style={{
@@ -315,7 +336,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                     }}
                   >
                     <option value="">Sem dono</option>
-                    {users.map(u => (
+                    {(localUsers.length > 0 ? localUsers : users).map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
