@@ -373,7 +373,13 @@ export default function TaskModal({ task, users = [], onClose }) {
                           <span style={{ color: '#9CA3AF', fontSize: '0.7rem' }}>Por: <b>{file.user_name}</b> • {formatDate(file.created_at)}</span>
                         </div>
                       </div>
-                      <a href={file.file_url.startsWith('http') ? file.file_url : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${file.file_url}`} target="_blank" rel="noopener noreferrer"
+                      <a 
+                        href={file.file_url.startsWith('http') 
+                          ? `${file.file_url}${file.file_url.includes('?') ? '&' : '?'}download=1` 
+                          : `${import.meta.env.VITE_API_URL || "http://localhost:3001"}${file.file_url}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        download={file.file_name}
                         style={{ background: 'var(--accent-light)', padding: '0.4rem', borderRadius: '6px', color: 'var(--accent)', textDecoration: 'none', flexShrink: 0 }}
                         title="Baixar Arquivo">
                         <Download size={15} />
