@@ -48,9 +48,9 @@ router.get('/:id/attachments', async (req, res) => {
         ta.file_url,
         ta.file_type, 
         ta.created_at, 
-        u.name as user_name 
+        COALESCE(u.name, 'Deleted User') as user_name 
       FROM task_attachments ta
-      JOIN users u ON ta.user_id = u.id
+      LEFT JOIN users u ON ta.user_id = u.id
       WHERE ta.task_id = $1
       ORDER BY ta.created_at DESC
     `, [id]);

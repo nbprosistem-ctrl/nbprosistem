@@ -142,6 +142,28 @@ const initializeDatabase = async () => {
             ['Administrador', 'admin@marketing.com', ADMIN_HASH, 'ADMIN', 'APPROVED']
         );
         console.log('Admin padrão garantido.');
+
+        // Garantir coluna is_blocked
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false`);
+
+        // Ajustar restrições para não deletar dados históricos ao excluir usuário
+        // Tentamos remover CASCADE e colocar SET NULL para comentários, histórico e anexos
+        const tablesToAdjust = [
+            { table: 'task_comments', column: 'user_id' },
+            { table: 'task_attachments', column: 'user_id' },
+            { table: 'task_history', column: 'user_id' }
+        ];
+
+        for (const item of tablesToAdjust) {
+            try {
+                // Tenta dropar a fkey padrão (Supabase costuma seguir esse padrão)
+                const fkeyName = `${item.table}_${item.column}_fkey`;
+                await pool.query(`ALTER TABLE ${item.table} DROP CONSTRAINT IF EXISTS ${fkeyName}`);
+                await pool.query(`ALTER TABLE ${item.table} ADD CONSTRAINT ${fkeyName} FOREIGN KEY (${item.column}) REFERENCES users(id) ON DELETE SET NULL`);
+            } catch (e) {
+                console.warn(`Aviso ao ajustar constraint em ${item.table}:`, e.message);
+            }
+        }
     } catch (err) {
         console.error('Erro ao init DB no Supabase', err);
     }

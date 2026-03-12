@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
       SELECT t.*, 
              p.name as project_name, 
              s.name as service_name, 
-             u.name as owner_name
+             COALESCE(u.name, 'Deleted User') as owner_name
       FROM tasks t
       LEFT JOIN projects p ON t.project_id = p.id
       LEFT JOIN services s ON t.service_id = s.id

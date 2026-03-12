@@ -60,6 +60,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Usuário pendente de aprovação pelo administrador' });
     }
 
+    if (user.is_blocked) {
+      return res.status(403).json({ error: 'Sua conta foi bloqueada. Por favor, entre em contato com o administrador.' });
+    }
+
     const tokenPayload = {
       id: user.id,
       email: user.email,

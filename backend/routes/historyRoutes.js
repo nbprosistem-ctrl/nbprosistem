@@ -16,9 +16,9 @@ router.get('/:id/history', async (req, res) => {
         th.action, 
         th.description, 
         th.created_at, 
-        u.name as user_name 
+        COALESCE(u.name, 'Deleted User') as user_name 
       FROM task_history th
-      JOIN users u ON th.user_id = u.id
+      LEFT JOIN users u ON th.user_id = u.id
       WHERE th.task_id = $1
       ORDER BY th.created_at DESC
     `, [id]);

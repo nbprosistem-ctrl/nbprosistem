@@ -16,10 +16,10 @@ router.get('/:id/comments', async (req, res) => {
         tc.id, 
         tc.comment, 
         tc.created_at, 
-        u.id as user_id, 
-        u.name as user_name 
+        tc.user_id, 
+        COALESCE(u.name, 'Deleted User') as user_name 
       FROM task_comments tc
-      JOIN users u ON tc.user_id = u.id
+      LEFT JOIN users u ON tc.user_id = u.id
       WHERE tc.task_id = $1
       ORDER BY tc.created_at ASC
     `, [id]);

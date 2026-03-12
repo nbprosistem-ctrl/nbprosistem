@@ -200,6 +200,30 @@ export default function CalendarView() {
                 week: 'Semana'
               }}
               height="auto"
+              dayCellDidMount={(info) => {
+                if (info.isToday) {
+                  const cell = info.el;
+                  cell.style.backgroundColor = 'rgba(124, 58, 237, 0.15)';
+                  cell.style.border = '2px solid rgba(124, 58, 237, 0.45)';
+                  cell.style.borderRadius = '10px';
+                  cell.style.position = 'relative';
+
+                  // Criar Badge "Hoje"
+                  const badge = document.createElement('div');
+                  badge.innerText = 'Hoje';
+                  badge.style.position = 'absolute';
+                  badge.style.top = '4px';
+                  badge.style.right = '4px';
+                  badge.style.fontSize = '11px';
+                  badge.style.background = '#7C3AED';
+                  badge.style.color = 'white';
+                  badge.style.padding = '2px 6px';
+                  badge.style.borderRadius = '6px';
+                  badge.style.fontWeight = '500';
+                  badge.style.zIndex = '5';
+                  cell.appendChild(badge);
+                }
+              }}
               eventClick={(info) => {
                 const isGhost = info.event.extendedProps.isGhost;
                 if(isGhost) {

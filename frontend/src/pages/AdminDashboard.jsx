@@ -36,10 +36,51 @@ export default function AdminDashboard() {
       await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Atualizar a lista localmente
       setUsers(users.map(u => u.id === id ? { ...u, status: 'APPROVED' } : u));
     } catch (err) {
       alert('Erro ao aprovar usuário');
+    }
+  };
+
+  const handleToggleBlock = async (id, currentBlocked) => {
+    if (!window.confirm(`Tem certeza que deseja ${currentBlocked ? 'desbloquear' : 'bloquear'} este usuário?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/block`, 
+        { is_blocked: !currentBlocked }, 
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setUsers(users.map(u => u.id === id ? response.data.user : u));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao alterar status de bloqueio');
+    }
+  };
+
+  const handleToggleRole = async (id, currentRole) => {
+    const newRole = currentRole === 'ADMIN' ? 'COLABORADOR' : 'ADMIN';
+    if (!window.confirm(`Tem certeza que deseja mudar o acesso para ${newRole}?`)) return;
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/role`, 
+        { role: newRole }, 
+        { headers: { Authorization: `Bearer ${token}` }}
+      );
+      setUsers(users.map(u => u.id === id ? response.data.user : u));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao alterar nível de acesso');
+    }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm('TEM CERTEZA? Esta ação excluirá o usuário definitivamente. Referências históricas serão mantidas.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(users.filter(u => u.id !== id));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao excluir usuário');
     }
   };
 
@@ -77,31 +118,70 @@ export default function AdminDashboard() {
                     </td>
                     <td style={{ color: 'var(--text-secondary)' }}>{u.email}</td>
                     <td>
-                      <span className="user-role">{u.role}</span>
+                      <span className="user-role" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {u.role === 'ADMIN' ? (
+                          <span className="badge" style={{ background: '#7C3AED', color: 'white' }}>ADMIN</span>
+                        ) : (
+                          <span className="badge" style={{ background: '#E5E7EB', color: '#374151' }}>COLABORADOR</span>
+                        )}
+                        {u.is_blocked && (
+                          <span className="badge" style={{ background: '#EF4444', color: 'white' }}>BLOQUEADO</span>
+                        )}
+                      </span>
                     </td>
                     <td>
-                      {u.status === 'APPROVED' ? (
-                        <span className="badge approved"><CheckCircle size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Aprovado</span>
-                      ) : (
-                        <span className="badge pending"><Clock size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Pendente</span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {u.status === 'APPROVED' ? (
+                          <span className="badge approved"><CheckCircle size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Aprovado</span>
+                        ) : (
+                          <span className="badge pending"><Clock size={14} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>Pendente</span>
+                        )}
+                      </div>
                     </td>
                     <td>
-                      {u.status === 'PENDING' && u.id !== user.id && (
-                        <button 
-                          onClick={() => handleApprove(u.id)}
-                          className="btn btn-success"
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto' }}
-                        >
-                          Aprovar Acesso
-                        </button>
-                      )}
-                      {u.status === 'APPROVED' && u.id !== user.id && (
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Nenhuma ação pendente</span>
-                      )}
-                      {u.id === user.id && (
-                        <span style={{ color: 'var(--accent)', fontSize: '0.85rem' }}>Sua conta</span>
-                      )}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {u.status === 'PENDING' && u.id !== user.id && (
+                          <button 
+                            onClick={() => handleApprove(u.id)}
+                            className="btn btn-success"
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto' }}
+                          >
+                            Aprovar
+                          </button>
+                        )}
+                        
+                        {u.id !== user.id && (
+                          <>
+                            <button 
+                              onClick={() => handleToggleRole(u.id, u.role)}
+                              className="btn"
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: 'var(--bg-white)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                            >
+                              {u.role === 'ADMIN' ? 'Rebaixar' : 'Promover'}
+                            </button>
+
+                            <button 
+                              onClick={() => handleToggleBlock(u.id, u.is_blocked)}
+                              className="btn"
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: u.is_blocked ? '#10B981' : '#F59E0B', color: 'white' }}
+                            >
+                              {u.is_blocked ? 'Desbloquear' : 'Bloquear'}
+                            </button>
+
+                            <button 
+                              onClick={() => handleDeleteUser(u.id)}
+                              className="btn"
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', width: 'auto', background: '#EF4444', color: 'white' }}
+                            >
+                              Excluir
+                            </button>
+                          </>
+                        )}
+
+                        {u.id === user.id && (
+                          <span style={{ color: 'var(--accent)', fontSize: '0.85rem', fontWeight: 'bold' }}>Sua conta</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
