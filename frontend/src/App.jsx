@@ -10,6 +10,7 @@ import Projects from './pages/Projects';
 import CalendarView from './pages/CalendarView';
 import Reports from './pages/Reports';
 import Templates from './pages/Templates';
+import Vault from './pages/Vault';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = React.useContext(AuthContext);
@@ -50,6 +51,12 @@ function AppRoutes() {
       <Route path="/calendar" element={
         <ProtectedRoute>
           <CalendarView />
+        </ProtectedRoute>
+      } />
+
+      <Route path="/vault" element={
+        <ProtectedRoute>
+          <Vault />
         </ProtectedRoute>
       } />
       

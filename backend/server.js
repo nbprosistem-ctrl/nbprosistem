@@ -133,6 +133,25 @@ const initializeDatabase = async () => {
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS review_status VARCHAR(50) DEFAULT 'PENDING';
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reviewer_id UUID REFERENCES users(id) ON DELETE SET NULL;
             ALTER TABLE tasks ADD COLUMN IF NOT EXISTS review_timestamp TIMESTAMP;
+
+            CREATE TABLE IF NOT EXISTS password_vault (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                title VARCHAR(255) NOT NULL,
+                login VARCHAR(255) NOT NULL,
+                password TEXT NOT NULL,
+                url VARCHAR(500),
+                description TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS password_vault_access (
+                id SERIAL PRIMARY KEY,
+                vault_id UUID REFERENCES password_vault(id) ON DELETE CASCADE,
+                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(vault_id, user_id)
+            );
         `);
         console.log('Tabelas de BD verificadas e garantidas (Supabase).');
         // Inserir admin padrão separadamente (hash de bcrypt tem $ que conflita com template literal)
@@ -183,6 +202,7 @@ const historyRoutes = require('./routes/historyRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const templateRoutes = require('./routes/templateRoutes');
 const columnNoteRoutes = require('./routes/columnNoteRoutes');
+const vaultRoutes = require('./routes/vaultRoutes');
 const path = require('path');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -231,6 +251,7 @@ app.use('/api/tasks', historyRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/column-notes', columnNoteRoutes);
+app.use('/api/vault', vaultRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

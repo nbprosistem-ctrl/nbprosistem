@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import {
   LayoutDashboard, Kanban, Calendar, FolderOpen,
-  Layers, Users, Settings, BarChart2, LogOut, Zap
+  Layers, Users, Settings, BarChart2, LogOut, Zap, Shield
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -20,6 +20,7 @@ export default function Sidebar() {
     { icon: Kanban,         label: 'Kanban',      path: '/board' },
     { icon: FolderOpen,     label: 'Projetos',    path: '/projects' },
     { icon: Calendar,       label: 'Calendário',  path: '/calendar' },
+    { icon: Shield,         label: 'Cofre',       path: '/vault' },
   ];
 
   const adminItems = user?.role === 'ADMIN' ? [
