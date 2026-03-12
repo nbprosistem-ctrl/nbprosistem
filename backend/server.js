@@ -152,6 +152,8 @@ const initializeDatabase = async () => {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(vault_id, user_id)
             );
+
+            ALTER TABLE password_vault ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
         `);
         console.log('Tabelas de BD verificadas e garantidas (Supabase).');
         // Inserir admin padrão separadamente (hash de bcrypt tem $ que conflita com template literal)

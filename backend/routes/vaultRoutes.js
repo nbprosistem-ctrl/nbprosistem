@@ -25,13 +25,19 @@ router.get('/', async (req, res) => {
             query = 'SELECT * FROM password_vault ORDER BY created_at DESC';
             params = [];
         } else {
-            // Usuário comum vê apenas o que tem acesso
+            // Usuário comum vê se criou OU se tem acesso concedido
             query = `
-                SELECT pv.* 
-                FROM password_vault pv
-                JOIN password_vault_access pva ON pv.id = pva.vault_id
-                WHERE pva.user_id = $1
-                ORDER BY pv.created_at DESC
+                SELECT v.*
+                FROM password_vault v
+                WHERE
+                v.created_by = $1
+                OR EXISTS (
+                    SELECT 1
+                    FROM password_vault_access a
+                    WHERE a.vault_id = v.id
+                    AND a.user_id = $1
+                )
+                ORDER BY v.created_at DESC
             `;
             params = [req.user.id];
         }
@@ -64,9 +70,9 @@ router.post('/', isAdmin, async (req, res) => {
     try {
         const encryptedPassword = encrypt(password);
         const result = await pool.query(
-            `INSERT INTO password_vault (title, login, password, url, description) 
-             VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-            [title, login, encryptedPassword, url, description]
+            `INSERT INTO password_vault (title, login, password, url, description, created_by) 
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [title, login, encryptedPassword, url, description, req.user.id]
         );
         const newEntry = result.rows[0];
 
