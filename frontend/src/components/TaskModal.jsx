@@ -10,6 +10,7 @@ export default function TaskModal({ task, users = [], onClose }) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
+  const commentsEndRef = React.useRef(null); // Ref para o final da lista de comentários
 
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -123,13 +124,18 @@ export default function TaskModal({ task, users = [], onClose }) {
         { comment: newComment },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setComments([...comments, res.data]);
-      setNewComment('');
+      
+      // O backend retorna { message, comment: {...} }
+      if (res.data && res.data.comment) {
+        setComments(prev => [...prev, res.data.comment]);
+        setNewComment('');
+        setMentionSuggestions([]);
+        // Pequeno delay para garantir que o DOM atualizou
+        setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
     } catch (err) {
-      const status = err?.response?.status;
-      const data = err?.response?.data;
-      console.error('ERRO AO COMENTAR:', status, data, err.message);
-      alert(`Falha ao enviar comentário. (${status || 'sem resposta'}: ${data?.error || err.message})`);
+      console.error('ERRO AO COMENTAR:', err);
+      alert(`Falha ao enviar comentário: ${err.response?.data?.error || err.message}`);
     } finally {
       setSending(false);
     }
@@ -580,6 +586,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                       </div>
                     ))
                   )}
+                  <div ref={commentsEndRef} />
                 </>
               ) : (
                 <>

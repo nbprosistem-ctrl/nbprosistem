@@ -62,49 +62,54 @@ router.post('/:id/comments', async (req, res) => {
         `Deixou um comentário.`
     );
 
-    // [Notificações] Buscar Dono da Tarefa para Avisar sobre o Comentário
-    const dQuery = await pool.query('SELECT owner_id, title FROM tasks WHERE id = $1', [id]);
-    const taskData = dQuery.rows[0];
+    // Tenta processar notificações e menções de forma assíncrona/silenciosa
+    try {
+      // [Notificações] Buscar Dono da Tarefa para Avisar sobre o Comentário
+      const dQuery = await pool.query('SELECT owner_id, title FROM tasks WHERE id = $1', [id]);
+      const taskData = dQuery.rows[0];
 
-    // Se a tarefa tem dono, e o dono NÃO É quem comentou
-    if(taskData && taskData.owner_id && taskData.owner_id !== req.user.id){
-        await createNotification(
-            taskData.owner_id,
-            'Novo comentário',
-            `${req.user.name} comentou em "${taskData.title}": "${comment.substring(0, 30)}..."`,
-            'task_comment',
-            id,
-            req.io
-        );
-    }
-    
-    // Verifica se houve menção @
-    const mentions = comment.match(/@([\wÀ-ú]+(?:\s[\wÀ-ú]+)?)/g);
-    if(mentions) {
-        for(let m of mentions) {
-            const mentionedName = m.substring(1).trim(); 
-            // Busca usuário por nome exato ou similar
-            const userQ = await pool.query('SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1', [`%${mentionedName}%`]);
-            if(userQ.rows.length > 0) {
-                const mentionedUserId = userQ.rows[0].id;
-                const mentionedUserName = userQ.rows[0].name;
+      // Se a tarefa tem dono, e o dono NÃO É quem comentou
+      if(taskData && taskData.owner_id && taskData.owner_id !== req.user.id){
+          await createNotification(
+              taskData.owner_id,
+              'Novo comentário',
+              `${req.user.name} comentou em "${taskData.title}": "${comment.substring(0, 30)}..."`,
+              'task_comment',
+              id,
+              req.io
+          );
+      }
+      
+      // Verifica se houve menção @
+      const mentions = comment.match(/@([\wÀ-ú]+(?:\s[\wÀ-ú]+)?)/g);
+      if(mentions) {
+          for(let m of mentions) {
+              const mentionedName = m.substring(1).trim(); 
+              // Busca usuário por nome exato ou similar
+              const userQ = await pool.query('SELECT id, name FROM users WHERE name ILIKE $1 LIMIT 1', [`%${mentionedName}%`]);
+              if(userQ.rows.length > 0) {
+                  const mentionedUserId = userQ.rows[0].id;
 
-                // Salvar na tabela comment_mentions
-                await pool.query('INSERT INTO comment_mentions (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [newCommentId, mentionedUserId]);
+                  // Salvar na tabela comment_mentions
+                  await pool.query('INSERT INTO comment_mentions (comment_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [newCommentId, mentionedUserId]);
 
-                // Não notificar a si mesmo
-                if(mentionedUserId !== req.user.id){
-                    await createNotification(
-                        mentionedUserId,
-                        'Você foi mencionado!',
-                        `${req.user.name} citou você na Tarefa "${taskData.title}".`,
-                        'mention',
-                        id,
-                        req.io
-                    );
-                }
-            }
-        }
+                  // Não notificar a si mesmo
+                  if(mentionedUserId !== req.user.id){
+                      await createNotification(
+                          mentionedUserId,
+                          'Você foi mencionado!',
+                          `${req.user.name} citou você na Tarefa "${taskData.title}".`,
+                          'mention',
+                          id,
+                          req.io
+                      );
+                  }
+              }
+          }
+      }
+    } catch (notifErr) {
+      console.error('FALHA NÃO CRÍTICA NA NOTIFICAÇÃO/MENTION:', notifErr);
+      // Não interrompe o fluxo de sucesso do comentário
     }
 
     // Buscando o comment com formatação do JOIN puro pra devolver p/ Front
