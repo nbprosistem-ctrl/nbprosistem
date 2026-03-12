@@ -8,15 +8,21 @@ import TaskModal from '../components/TaskModal';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 
+import { useKanbanData } from '../hooks/useKanbanData';
+
 export default function Board() {
   const { user } = useContext(AuthContext);
+  const { queries, mutations } = useKanbanData();
   
-  // Dados Mestre
-  const [tasks, setTasks] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [services, setServices] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Queries do React Query (dados cacheados)
+  const tasks = queries.tasks.data || [];
+  const projects = queries.projects.data || [];
+  const services = queries.services.data || [];
+  const users = queries.users.data || [];
+  const templates = queries.templates.data || [];
+  const notifications = queries.notifications.data || [];
+  const columnNotes = queries.columnNotes.data || {};
+  const loading = queries.tasks.isLoading || queries.projects.isLoading;
   const [error, setError] = useState('');
 
   // Filtros (aplicados no cliente, sem refetch)
@@ -46,97 +52,30 @@ export default function Board() {
   const [recurrenceOccurrences, setRecurrenceOccurrences] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
-  // Templates
-  const [templates, setTemplates] = useState([]);
   const [templateId, setTemplateId] = useState('');
 
-  // Notas editáveis por coluna
-  const [columnNotes, setColumnNotes] = useState({});
-
   // Hub de Notificações e WebSockets
-  const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const socketRef = useRef(null);
-  const notificationRef = useRef(null); // Ref para o container de notificações
+  const notificationRef = useRef(null); 
 
-  // Colunas do Kanban - Agora INCLUINDO BACKLOG
+  // Colunas do Kanban
   const kanbanColumns = [
     { id: 'BACKLOG', title: 'Backlog', color: '#94a3b8' },
-    { id: 'TODO', title: 'A Fazer', color: '#64748b' }, // Cinza escuro para legibilidade
+    { id: 'TODO', title: 'A Fazer', color: '#64748b' },
     { id: 'DOING', title: 'Em Andamento', color: '#fbbf24' },
     { id: 'REVIEW', title: 'Revisão', color: '#6366f1' },
     { id: 'DONE', title: 'Finalizado', color: '#10b981' },
   ];
 
-  const fetchData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const [resTasks, resProj, resServ, resUsers, resNotif] = await Promise.all([
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, { headers }),
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/projects`, { headers }),
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/services`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, { headers }).catch(() => ({ data: [] })),
-        axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications`, { headers }).catch(() => ({ data: [] }))
-      ]);
-
-      setTasks(resTasks.data);
-      setProjects(resProj.data);
-      // Sempre carregar serviços e usuários (necessários para os filtros)
-      setServices(resServ.data);
-      setUsers(resUsers.data);
-      setNotifications(resNotif.data);
-
-      // Carregar templates disponíveis
-      const resTmpl = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/templates`, { headers }).catch(() => ({ data: [] }));
-      setTemplates(resTmpl.data);
-
-      // Carregar notas de coluna
-      const resNotes = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/column-notes`, { headers }).catch(() => ({ data: {} }));
-      setColumnNotes(resNotes.data);
-    } catch (err) {
-      console.error(err);
-      const serverMsg = err.response?.data?.error || err.response?.data?.system || err.message || 'Erro Desconhecido';
-      setError(`Erro ao carregar dados do Kanban: ${serverMsg}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const markNotificationAsRead = async (id) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}/read`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch(err) { console.error('Falha ao marcar como lida', err); }
-  };
-
-  const deleteNotification = async (e, id) => {
+  const markNotificationAsRead = (id) => mutations.markNotificationAsRead.mutate(id);
+  const deleteNotification = (e, id) => {
     e.stopPropagation();
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (err) {
-      console.error('Falha ao excluir notificação', err);
-    }
+    mutations.deleteNotification.mutate(id);
   };
-
-  const clearAllNotifications = async () => {
-    if (!window.confirm('Deseja remover todas as notificações?')) return;
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/notifications`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNotifications([]);
-    } catch (err) {
-      console.error('Falha ao limpar notificações', err);
+  const clearAllNotifications = () => {
+    if (window.confirm('Deseja remover todas as notificações?')) {
+      mutations.clearAllNotifications.mutate();
     }
   };
 
@@ -156,8 +95,6 @@ export default function Board() {
   }, [showNotifications]);
 
   useEffect(() => {
-    fetchData();
-
     // Iniciar Módulo WebSockets (Socket.IO)
     socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:3001");
     
@@ -165,24 +102,17 @@ export default function Board() {
        socketRef.current.emit('join_user_room', user.id);
     }
     
-    // Listeners do Real-time Kanban
-    socketRef.current.on('notification', (newNotif) => {
-       setNotifications(prev => [newNotif, ...prev]);
+    // Listeners do Real-time Kanban - Invalidam o cache do React Query
+    socketRef.current.on('notification', () => {
+       queries.notifications.refetch();
     });
 
-    socketRef.current.on('card_created', (newTask) => {
-       setTasks(prev => {
-         if(prev.find(t => t.id === newTask.id)) return prev;
-         return [newTask, ...prev];
-       });
+    socketRef.current.on('card_created', () => {
+       queries.tasks.refetch();
     });
 
-    socketRef.current.on('card_moved', (updatedTask) => {
-       setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-    });
-
-    socketRef.current.on('comment_added', (payload) => {
-       console.log('Comentário em Tempo Real adicionado em Tarefa', payload.taskId);
+    socketRef.current.on('card_moved', () => {
+       queries.tasks.refetch();
     });
 
     return () => {
@@ -226,86 +156,54 @@ export default function Board() {
        return;
     }
 
-    // Atualização Otimista no Array FrontEnd
-
-    // Criar uma cópia isolada para atualizar a visualização IMEDIATAMENTE antes do servidor
-    const updatedTasks = tasks.map(t => {
-      if (t.id === draggableId) {
-        return { ...t, status_column: destination.droppableId };
+    // Call Backend via Mutation (com invalidação de cache inclusa)
+    mutations.moveTask.mutate({ 
+      taskId: draggableId, 
+      status_column: destination.droppableId 
+    }, {
+      onError: (err) => {
+        console.error(err);
+        alert("Falha de conexão: Cartão retornou a posição original.");
       }
-      return t;
     });
-
-    setTasks(updatedTasks);
-
-    // Call Backend (Silencioso para não travar a UI)
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${draggableId}/status`, 
-        { status_column: destination.droppableId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      // Reverter alteração otimista caso falhe a Rede
-      console.error(err);
-      fetchData(); 
-      alert("Falha de conexão: Cartão retornou a posição original.");
-    }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-
     setSubmitting(true);
     setError('');
 
-    try {
-      const token = localStorage.getItem('token');
-
-      if (templateId) {
-        // Modo Template: gera múltiplas tarefas automaticamente
-        await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/templates/${templateId}/apply`, {
-          project_id: projectId, owner_id: ownerId || null, due_date: dueDate || null
-        }, { headers: { Authorization: `Bearer ${token}` } });
-      } else {
-        // Modo Manual: cria uma única tarefa  
-        await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, {
-          title, description, project_id: projectId, service_id: serviceId, 
-          owner_id: ownerId, priority, due_date: dueDate, recurrence,
-          recurrence_days: recurrenceDays.join(','), recurrence_time: recurrenceTime,
-          recurrence_start_date: recurrenceStartDate, recurrence_end_type: recurrenceEndType,
-          recurrence_end_date: recurrenceEndDate, recurrence_occurrences: recurrenceOccurrences ? parseInt(recurrenceOccurrences) : null
-        }, { headers: { Authorization: `Bearer ${token}` } });
+    mutations.createTask.mutate({
+      title, description, project_id: projectId, service_id: serviceId, 
+      owner_id: ownerId, priority, due_date: dueDate, recurrence,
+      recurrence_days: recurrenceDays.join(','), recurrence_time: recurrenceTime,
+      recurrence_start_date: recurrenceStartDate, recurrence_end_type: recurrenceEndType,
+      recurrence_end_date: recurrenceEndDate, recurrence_occurrences: recurrenceOccurrences ? parseInt(recurrenceOccurrences) : null,
+      templateId
+    }, {
+      onSuccess: () => {
+        setTitle(''); setDescription(''); setProjectId(''); setServiceId(''); 
+        setOwnerId(''); setPriority('MEDIA'); setDueDate(''); setRecurrence('NENHUMA');
+        setRecurrenceDays([]); setRecurrenceTime(''); setRecurrenceStartDate('');
+        setRecurrenceEndType('NEVER'); setRecurrenceEndDate(''); setRecurrenceOccurrences('');
+        setTemplateId('');
+        setShowForm(false);
+        setSubmitting(false);
+      },
+      onError: () => {
+        setError('Erro ao cadastrar a Tarefa.');
+        setSubmitting(false);
       }
-      
-      setTitle(''); setDescription(''); setProjectId(''); setServiceId(''); 
-      setOwnerId(''); setPriority('MEDIA'); setDueDate(''); setRecurrence('NENHUMA');
-      setRecurrenceDays([]); setRecurrenceTime(''); setRecurrenceStartDate('');
-      setRecurrenceEndType('NEVER'); setRecurrenceEndDate(''); setRecurrenceOccurrences('');
-      setTemplateId('');
-      setShowForm(false);
-      
-      fetchData();
-    } catch (err) {
-      setError('Erro ao cadastrar a Tarefa.');
-    } finally {
-      setSubmitting(false);
-    }
+    });
   };
 
   const handleDelete = async (id) => {
     if (user.role !== 'ADMIN') return;
     if (!window.confirm('Excluir esta tarefa defitivamente?')) return;
     
-    try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      fetchData();
-    } catch (err) {
-      setError('Erro ao excluir tarefa.');
-    }
+    mutations.deleteTask.mutate(id, {
+      onError: () => setError('Erro ao excluir tarefa.')
+    });
   };
 
   const formatDate = (dateStr) => {

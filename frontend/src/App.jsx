@@ -11,6 +11,18 @@ import CalendarView from './pages/CalendarView';
 import Reports from './pages/Reports';
 import Templates from './pages/Templates';
 import Vault from './pages/Vault';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutos sem considerar os dados "velhos"
+      gcTime: 1000 * 60 * 30,    // Mantém no cache por 30 minutos (antigo cacheTime)
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { user, loading } = React.useContext(AuthContext);
@@ -91,11 +103,13 @@ function AppRoutes() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 

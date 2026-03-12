@@ -2,80 +2,41 @@ import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { X, Send, Clock, User, Tag, Calendar, AlertCircle, Paperclip, Download, FileText, Image as ImageIcon, Loader, Plus, Activity } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useKanbanData } from '../hooks/useKanbanData';
 
 export default function TaskModal({ task, users = [], onClose }) {
   const { user } = useContext(AuthContext);
-  const [comments, setComments] = useState([]);
+  const { queries, mutations } = useKanbanData();
+  
+  // Queries do React Query (específicas para esta tarefa)
+  const commentsQuery = useQuery(queries.getTaskComments(task.id));
+  const attachmentsQuery = useQuery(queries.getTaskAttachments(task.id));
+  const historyQuery = useQuery(queries.getTaskHistory(task.id));
+
+  const comments = commentsQuery.data || [];
+  const attachments = attachmentsQuery.data || [];
+  const history = historyQuery.data || [];
+  const loading = commentsQuery.isLoading;
+  const loadingHistory = historyQuery.isLoading;
+
   const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
-  const commentsEndRef = React.useRef(null); // Ref para o final da lista de comentários
+  const commentsEndRef = React.useRef(null);
 
-  const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
-  
-  // Review Logic
   const [reviewing, setReviewing] = useState(false);
   const [showReviewInput, setShowReviewInput] = useState(false);
   const [reviewComment, setReviewComment] = useState('');
-
   const [activeTab, setActiveTab] = useState('comments');
-  const [history, setHistory] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
   
   const [reassigning, setReassigning] = useState(false);
-  const [localUsers, setLocalUsers] = useState([]);
   const [selectedOwnerId, setSelectedOwnerId] = useState(task.owner_id || '');
-
-  useEffect(() => {
-    fetchComments();
-    fetchAttachments();
-    fetchHistory();
-    fetchUsersList();
-  }, [task.id]);
-
-  const fetchUsersList = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/users-list`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setLocalUsers(res.data);
-    } catch (err) {
-      console.error('Erro ao buscar lista de usuários', err);
-    }
-  };
 
   useEffect(() => {
     setSelectedOwnerId(task.owner_id || '');
   }, [task.owner_id]);
-
-  const fetchHistory = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setHistory(res.data);
-    } catch (err) {
-      console.error('Erro ao buscar timeline', err);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const fetchAttachments = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/attachments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setAttachments(res.data);
-    } catch (err) {
-      console.error('Erro ao buscar anexos', err);
-    }
-  };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
@@ -86,59 +47,34 @@ export default function TaskModal({ task, users = [], onClose }) {
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/attachments`, formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-      });
-      setAttachments([res.data, ...attachments]);
-    } catch (err) {
-      alert('Falha ao enviar arquivo.');
-    } finally {
-      setUploading(false);
-      e.target.value = null;
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/comments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setComments(res.data);
-    } catch (err) {
-      console.error('Erro ao buscar comentários', err);
-    } finally {
-      setLoading(false);
-    }
+    mutations.uploadAttachment.mutate({ taskId: task.id, formData }, {
+      onSuccess: () => setUploading(false),
+      onError: () => {
+        alert('Falha ao enviar arquivo.');
+        setUploading(false);
+      }
+    });
+    e.target.value = null;
   };
 
   const handleSendComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     setSending(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await axios.post(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/comments`,
-        { comment: newComment },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      // O backend retorna { message, comment: {...} }
-      if (res.data && res.data.comment) {
-        setComments(prev => [...prev, res.data.comment]);
+    
+    mutations.addComment.mutate({ taskId: task.id, comment: newComment }, {
+      onSuccess: () => {
         setNewComment('');
         setMentionSuggestions([]);
-        // Pequeno delay para garantir que o DOM atualizou
+        setSending(false);
         setTimeout(() => commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      },
+      onError: (err) => {
+        console.error('ERRO AO COMENTAR:', err);
+        alert(`Falha ao enviar comentário: ${err.response?.data?.error || err.message}`);
+        setSending(false);
       }
-    } catch (err) {
-      console.error('ERRO AO COMENTAR:', err);
-      alert(`Falha ao enviar comentário: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setSending(false);
-    }
+    });
   };
 
   const formatDate = (dateStr) => {
@@ -223,41 +159,32 @@ export default function TaskModal({ task, users = [], onClose }) {
       return alert('Por favor, informe o que precisa ser ajustado.');
     }
     setReviewing(true);
-    try {
-      const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}/review`, 
-      { action, comment: reviewComment },
-      { headers: { Authorization: `Bearer ${token}` }});
-      
-      onClose(); // Fecha o modal após enviar a decisão e deixa o WebSocket atualizar a tela geral
-    } catch(err) {
-      alert(err.response?.data?.error || 'Erro ao enviar avaliação.');
-    } finally {
-      setReviewing(false);
-    }
+    mutations.reviewTask.mutate({ taskId: task.id, action, comment: reviewComment }, {
+      onSuccess: () => {
+        setReviewing(false);
+        onClose();
+      },
+      onError: (err) => {
+        alert(err.response?.data?.error || 'Erro ao enviar avaliação.');
+        setReviewing(false);
+      }
+    });
   };
 
   const handleReassign = async (newOwnerId) => {
     if (user?.role !== 'ADMIN') return;
     
-    // Atualização visual imediata
     setSelectedOwnerId(newOwnerId);
     setReassigning(true);
     
-    try {
-      const token = localStorage.getItem('token');
-      // O endpoint solicitado pelo usuário é PUT /tasks/:taskId com responsible_user_id
-      await axios.put(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks/${task.id}`, 
-        { responsible_user_id: newOwnerId === '' ? null : newOwnerId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-    } catch (err) {
-      alert('Falha ao reatribuir tarefa.');
-      // Reverte se falhar
-      setSelectedOwnerId(task.owner_id || '');
-    } finally {
-      setReassigning(false);
-    }
+    mutations.reassignTask.mutate({ taskId: task.id, ownerId: newOwnerId }, {
+      onSuccess: () => setReassigning(false),
+      onError: () => {
+        alert('Falha ao reatribuir tarefa.');
+        setSelectedOwnerId(task.owner_id || '');
+        setReassigning(false);
+      }
+    });
   };
 
   const renderActionIcon = (action) => {
@@ -355,7 +282,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                     }}
                   >
                     <option value="">Sem dono</option>
-                    {(localUsers.length > 0 ? localUsers : users).map(u => (
+                    {(queries.users.data || []).map(u => (
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
@@ -653,7 +580,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                       const lastAt = val.lastIndexOf('@');
                       if (lastAt !== -1 && lastAt >= val.length - 30) {
                         const query = val.substring(lastAt + 1).toLowerCase();
-                        const matches = localUsers.filter(u => u.name.toLowerCase().includes(query)).slice(0, 5);
+                        const matches = (queries.users.data || []).filter(u => u.name.toLowerCase().includes(query)).slice(0, 5);
                         setMentionSuggestions(matches);
                       } else {
                         setMentionSuggestions([]);

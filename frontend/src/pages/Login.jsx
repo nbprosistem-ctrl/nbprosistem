@@ -2,6 +2,8 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { LogIn } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +13,29 @@ export default function Login() {
   
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const prefetchKanban = async () => {
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
+
+    // Prefetch de tarefas e projetos
+    queryClient.prefetchQuery({
+      queryKey: ['tasks'],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/api/tasks`, { headers });
+        return data;
+      },
+    });
+    queryClient.prefetchQuery({
+      queryKey: ['projects'],
+      queryFn: async () => {
+        const { data } = await axios.get(`${API_URL}/api/projects`, { headers });
+        return data;
+      },
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,6 +44,10 @@ export default function Login() {
     
     try {
       const data = await login(email, password);
+      
+      // Prefetch imediato para acelerar a primeira navegação
+      prefetchKanban();
+
       if (data.user.role === 'ADMIN') {
         navigate('/admin');
       } else {
