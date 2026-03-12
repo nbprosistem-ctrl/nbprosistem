@@ -152,9 +152,13 @@ export default function TaskModal({ task, users = [], onClose }) {
   };
 
   const renderCommentWithMentions = (text) => {
-    // Regex para capturar @Nome Completo ou @Nome
-    return text.split(/(@[\wÀ-ú]+\s?[\wÀ-ú]*)/g).map((part, i) =>
-      part.startsWith('@')
+    if (!text) return null;
+    // Regex melhorada para capturar nomes com espaços seguindo o padrão do backend
+    // Separa o texto em partes, mantendo os termos @Nome... como tokens
+    const parts = text.split(/(@[a-zA-ZÀ-ÿ\s]+?)(?=[,.;!?]|\s@|$)/g);
+    
+    return parts.map((part, i) =>
+      part && part.startsWith('@')
         ? <span key={i} style={{ 
             color: '#6c4eff', 
             fontWeight: '600', 
@@ -580,8 +584,19 @@ export default function TaskModal({ task, users = [], onClose }) {
                             <span style={{ color: '#9CA3AF', fontSize: '0.72rem' }}>{formatDateTime(c.created_at)}</span>
                           </div>
                           <p style={{ color: '#374151', fontSize: '0.875rem', lineHeight: '1.5', margin: 0, whiteSpace: 'pre-wrap' }}>
-                            {renderCommentWithMentions(c.comment)}
+                             {/* Proteção contra comentários nulos ou erro na renderização */}
+                            {c.comment ? renderCommentWithMentions(c.comment) : null}
                           </p>
+                          {/* Exibe menções como tags se o objeto vier com elas (conforme solicitado pelo usuário) */}
+                          {c.mentions && c.mentions.length > 0 && (
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '4px', flexWrap: 'wrap' }}>
+                              {c.mentions.map((m, idx) => (
+                                <span key={idx} style={{ fontSize: '0.7rem', color: '#6366f1', background: '#eef2ff', padding: '1px 5px', borderRadius: '4px' }}>
+                                  @{m.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))
@@ -636,7 +651,7 @@ export default function TaskModal({ task, users = [], onClose }) {
                       setNewComment(val);
                       
                       const lastAt = val.lastIndexOf('@');
-                      if (lastAt !== -1 && lastAt >= val.length - 20) {
+                      if (lastAt !== -1 && lastAt >= val.length - 30) {
                         const query = val.substring(lastAt + 1).toLowerCase();
                         const matches = localUsers.filter(u => u.name.toLowerCase().includes(query)).slice(0, 5);
                         setMentionSuggestions(matches);

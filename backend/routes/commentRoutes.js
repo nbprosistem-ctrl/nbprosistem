@@ -24,7 +24,20 @@ router.get('/:id/comments', async (req, res) => {
       ORDER BY tc.created_at ASC
     `, [id]);
     
-    res.json(commentsQuery.rows);
+    const comments = commentsQuery.rows;
+
+    // Para cada comentário, buscar suas menções
+    for (let c of comments) {
+      const mentionsQ = await pool.query(`
+        SELECT m.user_id, u.name 
+        FROM comment_mentions m
+        JOIN users u ON m.user_id = u.id
+        WHERE m.comment_id = $1
+      `, [c.id]);
+      c.mentions = mentionsQ.rows || [];
+    }
+    
+    res.json(comments);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao buscar comentários.' });
@@ -80,8 +93,9 @@ router.post('/:id/comments', async (req, res) => {
           );
       }
       
-      // Verifica se houve menção @
-      const mentions = comment.match(/@([\wÀ-ú]+(?:\s[\wÀ-ú]+)?)/g);
+      // Regex que suporta nomes com espaços (ex: @Thiago Sertori)
+      // Captura @ seguido de letras/espaços até encontrar pontuação ou nova menção
+      const mentions = comment.match(/@([a-zA-ZÀ-ÿ\s]+?)(?=[,.;!?]|\s@|$)/g);
       if(mentions) {
           for(let m of mentions) {
               const mentionedName = m.substring(1).trim(); 
@@ -125,14 +139,29 @@ router.post('/:id/comments', async (req, res) => {
       WHERE tc.id = $1
     `, [newCommentId]);
 
-    const newComment = selectQuery.rows[0];
+    // Busca as menções salvas para este comentário
+    const mentionsQuery = await pool.query(`
+      SELECT m.user_id, u.name 
+      FROM comment_mentions m
+      JOIN users u ON m.user_id = u.id
+      WHERE m.comment_id = $1
+    `, [newCommentId]);
+
+    const newCommentObj = {
+      ...selectQuery.rows[0],
+      mentions: mentionsQuery.rows || []
+    };
     
     // Emitir via socket para a board atualizar em real-time
     if (req.io) {
-       req.io.emit('comment_added', { taskId: id, comment: newComment });
+       req.io.emit('comment_added', { taskId: id, comment: newCommentObj });
     }
 
-    res.status(201).json({ message: 'Comentário adicionado.', comment: newComment });
+    res.status(201).json({ 
+      success: true, 
+      message: 'Comentário adicionado.', 
+      comment: newCommentObj 
+    });
   } catch (err) {
     console.error('COMMENT ERROR CODE:', err.code);
     console.error('COMMENT ERROR MSG:', err.message);
