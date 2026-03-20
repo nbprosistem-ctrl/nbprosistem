@@ -53,7 +53,7 @@ export default function CalendarView() {
         };
 
         myTasks.forEach(task => {
-          const baseDate = toLocalDateStr(task.recurrence_start_date) || toLocalDateStr(task.due_date);
+          const baseDate = toLocalDateStr(task.due_date) || toLocalDateStr(task.recurrence_start_date);
           if (!baseDate) return;
 
           const timeString = task.recurrence_time
