@@ -10,7 +10,7 @@ router.use(requireAdmin);
 // Lista todos os usuários
 router.get('/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name, email, role, status, is_blocked, created_at FROM users ORDER BY created_at DESC');
+    const result = await pool.query("SELECT id, name, email, role, status, is_blocked, created_at FROM users WHERE email <> 'admin@nestx.com.br' ORDER BY created_at DESC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);

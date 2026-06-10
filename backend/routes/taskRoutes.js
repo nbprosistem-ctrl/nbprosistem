@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
 // Listar usuários para atribuição (GET /api/tasks/users-list)
 router.get('/users-list', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, name FROM users WHERE status = \'APPROVED\' ORDER BY name ASC');
+    const result = await pool.query("SELECT id, name FROM users WHERE status = 'APPROVED' AND email <> 'admin@nestx.com.br' ORDER BY name ASC");
     res.json(result.rows);
   } catch (err) {
     console.error(err);
