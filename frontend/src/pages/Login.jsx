@@ -16,7 +16,7 @@ export default function Login() {
   const queryClient = useQueryClient();
 
   const prefetchKanban = async () => {
-    const API_URL = import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com";
+    const API_URL = import.meta.env.VITE_API_URL || "https://nbprosistem-backend.onrender.com";
     const token = localStorage.getItem('token');
     const headers = { Authorization: `Bearer ${token}` };
 

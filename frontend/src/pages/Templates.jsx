@@ -29,7 +29,7 @@ export default function Templates() {
   const fetchTemplates = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/templates`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nbprosistem-backend.onrender.com"}/api/templates`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTemplates(res.data);
@@ -60,7 +60,7 @@ export default function Templates() {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/templates`, {
+      await axios.post(`${import.meta.env.VITE_API_URL || "https://nbprosistem-backend.onrender.com"}/api/templates`, {
         name, description, tasks: validTasks
       }, { headers: { Authorization: `Bearer ${token}` } });
 
@@ -80,7 +80,7 @@ export default function Templates() {
     if (!window.confirm(`Excluir o template "${tmplName}" e todas suas subtarefas?`)) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/templates/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nbprosistem-backend.onrender.com"}/api/templates/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTemplates();
