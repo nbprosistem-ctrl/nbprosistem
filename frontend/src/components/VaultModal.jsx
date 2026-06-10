@@ -34,7 +34,7 @@ export default function VaultModal({ entry, onClose, onSave, onToast }) {
     try {
       setLoadingUsers(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/admin/users`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Filtra apenas colaboradores (opcional, mas comum)
@@ -49,7 +49,7 @@ export default function VaultModal({ entry, onClose, onSave, onToast }) {
   const fetchEntryAccess = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/vault/${id}/access`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/vault/${id}/access`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFormData(prev => ({ ...prev, accessUserIds: res.data.map(u => u.id) }));
@@ -67,7 +67,7 @@ export default function VaultModal({ entry, onClose, onSave, onToast }) {
     try {
       setSaving(true);
       const token = localStorage.getItem('token');
-      const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/vault`;
+      const url = `${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/vault`;
       
       if (entry) {
         await axios.put(`${url}/${entry.id}`, formData, {

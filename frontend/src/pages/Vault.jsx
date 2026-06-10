@@ -21,7 +21,7 @@ export default function Vault() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/vault`, {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/vault`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setEntries(res.data);
@@ -51,7 +51,7 @@ export default function Vault() {
     if (!window.confirm('Tem certeza que deseja remover esta credencial?')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/vault/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/vault/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast('Removido com sucesso!');

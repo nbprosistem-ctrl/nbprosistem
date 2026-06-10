@@ -15,7 +15,7 @@ export default function CalendarView() {
     const fetchTasks = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/tasks`, {
+        const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/tasks`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 

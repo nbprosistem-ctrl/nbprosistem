@@ -26,7 +26,7 @@ export default function AdminDashboard() {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(response.data);
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
     e.stopPropagation();
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/approve`, {}, {
+      await axios.patch(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users/${id}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(users.map(u => u.id === id ? { ...u, status: 'APPROVED' } : u));
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
     if (!window.confirm(`Tem certeza que deseja ${currentBlocked ? 'desbloquear' : 'bloquear'} este usuário?`)) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/block`, 
+      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users/${id}/block`, 
         { is_blocked: !currentBlocked }, 
         { headers: { Authorization: `Bearer ${token}` }}
       );
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
     if (!window.confirm(`Tem certeza que deseja mudar o acesso para ${newRole}?`)) return;
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}/role`, 
+      const response = await axios.patch(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users/${id}/role`, 
         { role: newRole }, 
         { headers: { Authorization: `Bearer ${token}` }}
       );
@@ -95,7 +95,7 @@ export default function AdminDashboard() {
     if (!window.confirm('TEM CERTEZA? Esta ação excluirá o usuário definitivamente. Referências históricas serão mantidas.')) return;
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/admin/users/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(users.filter(u => u.id !== id));

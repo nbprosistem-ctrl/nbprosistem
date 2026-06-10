@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Proxy package para deploy automático via Git",
   "scripts": {
-    "start": "cd backend && node server.js",
+    "start": "cd backend && npm install && node server.js",
     "build": "cd backend && npm install"
   }
 }

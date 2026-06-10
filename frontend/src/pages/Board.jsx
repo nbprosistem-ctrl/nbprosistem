@@ -96,7 +96,7 @@ export default function Board() {
 
   useEffect(() => {
     // Iniciar Módulo WebSockets (Socket.IO)
-    socketRef.current = io(import.meta.env.VITE_API_URL || "http://localhost:3001");
+    socketRef.current = io(import.meta.env.VITE_API_URL || "https://nextfy.onrender.com");
     
     if (user?.id) {
        socketRef.current.emit('join_user_room', user.id);
@@ -245,7 +245,7 @@ export default function Board() {
   const saveColumnNote = async (columnId, note) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/column-notes/${columnId}`,
+      await axios.patch(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/column-notes/${columnId}`,
         { note },
         { headers: { Authorization: `Bearer ${token}` } }
       );
