@@ -102,10 +102,6 @@ export default function Login() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        
-        <div className="auth-link" onClick={() => navigate('/register')}>
-          Ainda não tem conta? <span>Cadastre-se</span>
-        </div>
       </div>
     </div>
   );

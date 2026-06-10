@@ -237,6 +237,45 @@ io.on('connection', (socket) => {
 app.use(cors());
 app.use(express.json());
 
+// Inicialização do Supabase Client para Autenticação
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
+);
+
+// Rota raiz para teste
+app.get('/', (req, res) => {
+  res.send("API nbprosistem rodando");
+});
+
+// Endpoint de login direto via Supabase Auth
+app.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      return res.status(401).json({ error: error.message });
+    }
+
+    return res.json({
+      token: data.session.access_token,
+      user: data.user
+    });
+  } catch (err) {
+    console.error('LOGIN ERROR:', err);
+    return res.status(500).json({ error: 'Erro interno no servidor' });
+  }
+});
+
 // Expor a pasta uploads publicamente para downloads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
