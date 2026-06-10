@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { login as apiLogin, register as apiRegister } from '../services/api';
 
 export const AuthContext = createContext();
 
@@ -18,15 +18,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/auth/login`, { email, password });
-    localStorage.setItem('token', response.data.token);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    setUser(response.data.user);
-    return response.data;
+    const data = await apiLogin(email, password);
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    setUser(data.user);
+    return data;
   };
 
   const register = async (name, email, password, role) => {
-    return await axios.post(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/auth/register`, { name, email, password, role });
+    return await apiRegister(name, email, password, role);
   };
 
   const logout = () => {

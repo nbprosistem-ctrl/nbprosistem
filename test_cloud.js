@@ -4,7 +4,7 @@ async function testCloudTasks() {
     const creds = JSON.stringify({name:'Tste', email:'tesssstte5@gmail.com', password:'123', role:'COLABORADOR'})
     
     // Passo 1 - Registrar conta pra gerar valid JWT na nuvem
-    const reqReg = https.request('https://nextfy.onrender.com/api/auth/register', {
+    const reqReg = https.request('https://nbprosistem.onrender.com/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Content-Length': creds.length }
     }, resReg => {
@@ -17,7 +17,7 @@ async function testCloudTasks() {
             // Já sei, o test login do admin padrão!
             const adminCreds = JSON.stringify({ email: 'admin@marketing.com', password: '123' });
             
-            const reqLog = https.request('https://nextfy.onrender.com/api/auth/login', {
+            const reqLog = https.request('https://nbprosistem.onrender.com/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Content-Length': adminCreds.length }
             }, resLog => {
@@ -28,11 +28,11 @@ async function testCloudTasks() {
                          if(!token) return console.log('Falha na auth');
                          
                          // Buscar Tasks
-                         https.get('https://nextfy.onrender.com/api/tasks', { headers: { Authorization: 'Bearer ' + token } }, resTask => {
+                         https.get('https://nbprosistem.onrender.com/api/tasks', { headers: { Authorization: 'Bearer ' + token } }, resTask => {
                             let t=''; resTask.on('data', d=>t+=d); resTask.on('end', () => console.log('Tasks GET:', resTask.statusCode, t));
                          });
                          
-                         https.get('https://nextfy.onrender.com/api/projects', { headers: { Authorization: 'Bearer ' + token } }, resProj => {
+                         https.get('https://nbprosistem.onrender.com/api/projects', { headers: { Authorization: 'Bearer ' + token } }, resProj => {
                             let p=''; resProj.on('data', d=>p+=d); resProj.on('end', () => console.log('Proj GET:', resProj.statusCode, p));
                          });
                      }catch(e){console.error(e)}

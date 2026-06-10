@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
 
 // Chave secreta deve ter 32 bytes. No .env deve estar VITE_VAULT_KEY
-const secretKey = process.env.VITE_VAULT_KEY || 'nextfy-super-secret-vault-key-256'; // Fallback apenas para dev, ideal usar .env
+const secretKey = process.env.VITE_VAULT_KEY || 'nbprosistem-super-secret-vault-key-256'; // Fallback apenas para dev, ideal usar .env
 const iv = crypto.randomBytes(16);
 
 /**

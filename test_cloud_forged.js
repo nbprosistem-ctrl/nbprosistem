@@ -13,10 +13,10 @@ const token = jwt.sign({
 
 console.log('Token forjado com sucesso...');
 
-https.get('https://nextfy.onrender.com/api/tasks', { headers: { Authorization: 'Bearer ' + token } }, resTask => {
+https.get('https://nbprosistem.onrender.com/api/tasks', { headers: { Authorization: 'Bearer ' + token } }, resTask => {
     let t=''; resTask.on('data', d=>t+=d); resTask.on('end', () => console.log('Tasks GET:', resTask.statusCode, t));
 });
 
-https.get('https://nextfy.onrender.com/api/projects', { headers: { Authorization: 'Bearer ' + token } }, resProj => {
+https.get('https://nbprosistem.onrender.com/api/projects', { headers: { Authorization: 'Bearer ' + token } }, resProj => {
     let p=''; resProj.on('data', d=>p+=d); resProj.on('end', () => console.log('Proj GET:', resProj.statusCode, p));
 });

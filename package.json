@@ -1,5 +1,5 @@
 {
-  "name": "nextfy-deploy",
+  "name": "nbprosistem-deploy",
   "version": "1.0.0",
   "description": "Proxy package para deploy automático via Git",
   "scripts": {

@@ -1,12 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || "https://nextfy.onrender.com";
-
-const getHeaders = () => {
-  const token = localStorage.getItem('token');
-  return { Authorization: `Bearer ${token}` };
-};
+import api from '../services/api';
 
 export const useKanbanData = () => {
   const queryClient = useQueryClient();
@@ -15,7 +8,7 @@ export const useKanbanData = () => {
   const tasksQuery = useQuery({
     queryKey: ['tasks'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/tasks`, { headers: getHeaders() });
+      const { data } = await api.get('/api/tasks');
       return data;
     },
   });
@@ -23,7 +16,7 @@ export const useKanbanData = () => {
   const projectsQuery = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/projects`, { headers: getHeaders() });
+      const { data } = await api.get('/api/projects');
       return data;
     },
   });
@@ -31,7 +24,7 @@ export const useKanbanData = () => {
   const servicesQuery = useQuery({
     queryKey: ['services'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/admin/services`, { headers: getHeaders() }).catch(() => ({ data: [] }));
+      const { data } = await api.get('/api/admin/services').catch(() => ({ data: [] }));
       return data;
     },
   });
@@ -39,7 +32,7 @@ export const useKanbanData = () => {
   const usersQuery = useQuery({
     queryKey: ['users'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/admin/users`, { headers: getHeaders() }).catch(() => ({ data: [] }));
+      const { data } = await api.get('/api/admin/users').catch(() => ({ data: [] }));
       return data;
     },
   });
@@ -47,7 +40,7 @@ export const useKanbanData = () => {
   const templatesQuery = useQuery({
     queryKey: ['templates'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/templates`, { headers: getHeaders() }).catch(() => ({ data: [] }));
+      const { data } = await api.get('/api/templates').catch(() => ({ data: [] }));
       return data;
     },
   });
@@ -55,7 +48,7 @@ export const useKanbanData = () => {
   const notificationsQuery = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/notifications`, { headers: getHeaders() }).catch(() => ({ data: [] }));
+      const { data } = await api.get('/api/notifications').catch(() => ({ data: [] }));
       return data;
     },
   });
@@ -63,7 +56,7 @@ export const useKanbanData = () => {
   const columnNotesQuery = useQuery({
     queryKey: ['columnNotes'],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/column-notes`, { headers: getHeaders() }).catch(() => ({ data: {} }));
+      const { data } = await api.get('/api/column-notes').catch(() => ({ data: {} }));
       return data;
     },
   });
@@ -72,7 +65,7 @@ export const useKanbanData = () => {
   const getTaskCommentsQuery = (taskId) => ({
     queryKey: ['comments', taskId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/tasks/${taskId}/comments`, { headers: getHeaders() });
+      const { data } = await api.get(`/api/tasks/${taskId}/comments`);
       return data;
     },
     enabled: !!taskId,
@@ -81,7 +74,7 @@ export const useKanbanData = () => {
   const getTaskAttachmentsQuery = (taskId) => ({
     queryKey: ['attachments', taskId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/tasks/${taskId}/attachments`, { headers: getHeaders() });
+      const { data } = await api.get(`/api/tasks/${taskId}/attachments`);
       return data;
     },
     enabled: !!taskId,
@@ -90,7 +83,7 @@ export const useKanbanData = () => {
   const getTaskHistoryQuery = (taskId) => ({
     queryKey: ['history', taskId],
     queryFn: async () => {
-      const { data } = await axios.get(`${API_URL}/api/tasks/${taskId}/history`, { headers: getHeaders() });
+      const { data } = await api.get(`/api/tasks/${taskId}/history`);
       return data;
     },
     enabled: !!taskId,
@@ -99,7 +92,7 @@ export const useKanbanData = () => {
   // Mutations
   const addCommentMutation = useMutation({
     mutationFn: async ({ taskId, comment }) => {
-      const { data } = await axios.post(`${API_URL}/api/tasks/${taskId}/comments`, { comment }, { headers: getHeaders() });
+      const { data } = await api.post(`/api/tasks/${taskId}/comments`, { comment });
       return data;
     },
     onSuccess: (data, variables) => {
@@ -109,8 +102,8 @@ export const useKanbanData = () => {
 
   const uploadAttachmentMutation = useMutation({
     mutationFn: async ({ taskId, formData }) => {
-      const { data } = await axios.post(`${API_URL}/api/tasks/${taskId}/attachments`, formData, {
-        headers: { ...getHeaders(), 'Content-Type': 'multipart/form-data' }
+      const { data } = await api.post(`/api/tasks/${taskId}/attachments`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       return data;
     },
@@ -121,10 +114,9 @@ export const useKanbanData = () => {
 
   const reassignTaskMutation = useMutation({
     mutationFn: async ({ taskId, ownerId }) => {
-      await axios.put(`${API_URL}/api/tasks/${taskId}`, 
-        { responsible_user_id: ownerId === '' ? null : ownerId },
-        { headers: getHeaders() }
-      );
+      await api.put(`/api/tasks/${taskId}`, {
+        responsible_user_id: ownerId === '' ? null : ownerId
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -133,10 +125,7 @@ export const useKanbanData = () => {
 
   const reviewTaskMutation = useMutation({
     mutationFn: async ({ taskId, action, comment }) => {
-      await axios.patch(`${API_URL}/api/tasks/${taskId}/review`, 
-        { action, comment },
-        { headers: getHeaders() }
-      );
+      await api.patch(`/api/tasks/${taskId}/review`, { action, comment });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -145,10 +134,7 @@ export const useKanbanData = () => {
 
   const moveTaskMutation = useMutation({
     mutationFn: async ({ taskId, status_column }) => {
-      await axios.patch(`${API_URL}/api/tasks/${taskId}/status`, 
-        { status_column },
-        { headers: getHeaders() }
-      );
+      await api.patch(`/api/tasks/${taskId}/status`, { status_column });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -158,14 +144,14 @@ export const useKanbanData = () => {
   const createTaskMutation = useMutation({
     mutationFn: async (taskData) => {
       const endpoint = taskData.templateId 
-        ? `${API_URL}/api/templates/${taskData.templateId}/apply`
-        : `${API_URL}/api/tasks`;
+        ? `/api/templates/${taskData.templateId}/apply`
+        : `/api/tasks`;
       
       const payload = taskData.templateId
         ? { project_id: taskData.projectId, owner_id: taskData.ownerId || null, due_date: taskData.dueDate || null }
         : taskData;
 
-      await axios.post(endpoint, payload, { headers: getHeaders() });
+      await api.post(endpoint, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -174,7 +160,7 @@ export const useKanbanData = () => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId) => {
-      await axios.delete(`${API_URL}/api/tasks/${taskId}`, { headers: getHeaders() });
+      await api.delete(`/api/tasks/${taskId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
@@ -183,7 +169,7 @@ export const useKanbanData = () => {
 
   const markNotificationAsReadMutation = useMutation({
     mutationFn: async (id) => {
-      await axios.patch(`${API_URL}/api/notifications/${id}/read`, {}, { headers: getHeaders() });
+      await api.patch(`/api/notifications/${id}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -192,7 +178,7 @@ export const useKanbanData = () => {
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (id) => {
-      await axios.delete(`${API_URL}/api/notifications/${id}`, { headers: getHeaders() });
+      await api.delete(`/api/notifications/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -201,7 +187,7 @@ export const useKanbanData = () => {
 
   const clearAllNotificationsMutation = useMutation({
     mutationFn: async () => {
-      await axios.delete(`${API_URL}/api/notifications`, { headers: getHeaders() });
+      await api.delete('/api/notifications');
     },
     onSuccess: () => {
       queryClient.setQueryData(['notifications'], []);

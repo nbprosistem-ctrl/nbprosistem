@@ -19,7 +19,7 @@ export default function Services() {
   const fetchServices = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/services`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/admin/services`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setServices(response.data);
@@ -42,7 +42,7 @@ export default function Services() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/services`, {
+      await axios.post(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/admin/services`, {
         name,
         description,
         estimated_time: estimatedTime ? parseInt(estimatedTime, 10) : 0,
@@ -70,7 +70,7 @@ export default function Services() {
     
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/admin/services/${id}`, {
+      await axios.delete(`${import.meta.env.VITE_API_URL || "https://nbprosistem.onrender.com"}/api/admin/services/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchServices();

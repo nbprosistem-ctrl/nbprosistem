@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import Sidebar from '../components/Sidebar';
 import { AuthContext } from '../context/AuthContext';
 import FullCalendar from '@fullcalendar/react';
@@ -14,10 +14,7 @@ export default function CalendarView() {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await axios.get(`${import.meta.env.VITE_API_URL || "https://nextfy.onrender.com"}/api/tasks`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await api.get('/api/tasks');
 
         let myTasks = res.data;
         // O calendário agora mostra todas as tarefas da equipe, independente de quem as possui
@@ -42,7 +39,7 @@ export default function CalendarView() {
           return null;
         };
 
-        // Converte strings ISO do Supabase para string de data local (YYYY-MM-DD)
+        // Converte strings ISO de data para string de data local (YYYY-MM-DD)
         // sem deslocamento de timezone (evita o bug de "dia anterior")
         const toLocalDateStr = (isoStr) => {
           if (!isoStr) return null;

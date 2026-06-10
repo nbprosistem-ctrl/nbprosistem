@@ -6,7 +6,7 @@ const data = JSON.stringify({
 });
 
 const req = https.request({
-  hostname: 'nextfy.onrender.com', // ou nextfy-backend se ele usar 2 projetos
+  hostname: 'nbprosistem.onrender.com', // ou nbprosistem-backend se ele usar 2 projetos
   port: 443,
   path: '/api/auth/login',
   method: 'POST',
