@@ -31,8 +31,8 @@ const authenticateToken = async (req, res, next) => {
       const status = user.user_metadata?.status || 'APPROVED';
       
       const insertRes = await pool.query(
-        'INSERT INTO users (id, name, email, password_hash, role, status) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email) DO UPDATE SET id = $1, role = $5, status = $6 RETURNING *',
-        [user.id, name, user.email, 'supabase_auth', role, status]
+        'INSERT INTO users (id, name, email, role, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO UPDATE SET id = $1, role = $4, status = $5 RETURNING *',
+        [user.id, name, user.email, role, status]
       );
       userDetails = insertRes.rows[0];
     }

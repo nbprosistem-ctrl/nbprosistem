@@ -164,8 +164,9 @@ const initializeDatabase = async () => {
         );
         console.log('Admin padrão garantido.');
 
-        // Garantir coluna is_blocked
+        // Garantir coluna is_blocked e remover obrigatoriedade de password_hash para autenticação externa
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false`);
+        await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`);
 
         // Ajustar restrições para não deletar dados históricos ao excluir usuário
         // Tentamos remover CASCADE e colocar SET NULL para comentários, histórico e anexos
@@ -249,7 +250,7 @@ app.get('/', (req, res) => {
   res.send("API nbprosistem rodando");
 });
 
-// Endpoint de login direto via Supabase Auth
+// Endpoint de login direto via Supabase Auth + Sincronização e Carga de Dados Locais do PostgreSQL
 app.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -257,6 +258,7 @@ app.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
+    // 1. Autenticar no Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -266,13 +268,44 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: error.message });
     }
 
+    const authUser = data.user;
+
+    // 2. Buscar informações adicionais no banco PostgreSQL local
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [authUser.id]);
+    let userDetails = userResult.rows[0];
+
+    // 3. Se o usuário não existe no PostgreSQL local, sincronizamos ele de forma dinâmica
+    if (!userDetails) {
+      const name = authUser.user_metadata?.name || authUser.email.split('@')[0];
+      const role = authUser.user_metadata?.role || 'COLABORADOR';
+      const status = authUser.user_metadata?.status || 'APPROVED';
+      
+      const insertRes = await pool.query(
+        'INSERT INTO users (id, name, email, role, status) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO UPDATE SET id = $1, role = $4, status = $5 RETURNING *',
+        [authUser.id, name, authUser.email, role, status]
+      );
+      userDetails = insertRes.rows[0];
+    }
+
+    // 4. Verificar se o usuário está bloqueado localmente
+    if (userDetails.is_blocked) {
+      return res.status(403).json({ error: 'Sua conta foi bloqueada. Por favor, entre em contato com o administrador.' });
+    }
+
+    // 5. Retornar token e payload compatível com o controle de acesso do frontend (roles/permissions)
     return res.json({
       token: data.session.access_token,
-      user: data.user
+      user: {
+        id: userDetails.id,
+        email: userDetails.email,
+        role: userDetails.role,
+        status: userDetails.status,
+        name: userDetails.name
+      }
     });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
-    return res.status(500).json({ error: 'Erro interno no servidor' });
+    return res.status(500).json({ error: 'Erro interno no servidor ao tentar realizar o login' });
   }
 });
 
