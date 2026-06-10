@@ -2,6 +2,12 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Força o resolvedor de DNS a priorizar conexões IPv4 sobre IPv6 (evita erro ENETUNREACH no Render.com)
+const dns = require('dns');
+if (dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
+
 // Evita que o servidor morra silenciosamente com promises rejeitadas não tratadas
 process.on('unhandledRejection', (reason, promise) => {
   console.error('⚠️  UnhandledRejection:', reason);
