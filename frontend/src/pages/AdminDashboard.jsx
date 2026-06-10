@@ -120,7 +120,7 @@ export default function AdminDashboard() {
           {loading ? (
             <p>Carregando usuários...</p>
           ) : (
-            <div style={{ overflowX: 'auto', paddingBottom: '100px', marginBottom: '-100px' }}>
+            <div style={{ overflowX: 'auto', paddingBottom: '180px', marginBottom: '-180px' }}>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
                                 ref={menuRef}
                                 style={{
                                   position: 'absolute', right: '100%', 
-                                  ...(index >= users.length - 2 && users.length > 2 ? { bottom: 0 } : { top: 0 }),
+                                  ...(index >= users.length - 2 ? { bottom: 0 } : { top: 0 }),
                                   zIndex: 100,
                                   background: 'white', border: '1px solid #E5E7EB', borderRadius: '8px',
                                   boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '0.4rem', minWidth: '180px',
