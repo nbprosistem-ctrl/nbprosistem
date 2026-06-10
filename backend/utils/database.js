@@ -4,6 +4,7 @@ const format = require("pg-format");
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+  family: 4, // Força a conexão PostgreSQL a usar exclusivamente IPv4, evitando erro ENETUNREACH no Render.com
 
   // Pool seguro para produção
   max: 10,
