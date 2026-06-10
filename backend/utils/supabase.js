@@ -7,6 +7,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('⚠️  Supabase URL ou Service Key não configurados. Uploads podem falhar.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl || 'https://dummy.supabase.co', supabaseServiceKey || 'dummy');
 
 module.exports = supabase;
