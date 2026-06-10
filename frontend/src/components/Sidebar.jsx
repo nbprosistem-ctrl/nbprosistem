@@ -39,7 +39,7 @@ export default function Sidebar() {
           src="/logo-nestx.png?v=2"
           alt="Nestx"
           style={{
-            height: '64px',
+            height: '94px',
             width: 'auto',
             objectFit: 'contain'
           }}
