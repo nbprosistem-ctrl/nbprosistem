@@ -36,7 +36,7 @@ export default function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-logo" style={{ padding: '2rem 1rem 1.5rem', display: 'flex', justifyContent: 'center' }}>
         <img
-          src="/logo-nestx.png"
+          src="/logo-nestx.png?v=2"
           alt="Nestx"
           style={{
             height: '64px',
