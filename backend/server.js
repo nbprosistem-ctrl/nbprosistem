@@ -305,7 +305,11 @@ app.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('LOGIN ERROR:', err);
-    return res.status(500).json({ error: 'Erro interno no servidor ao tentar realizar o login' });
+    return res.status(500).json({ 
+      error: 'Erro interno no servidor ao tentar realizar o login',
+      message: err.message,
+      stack: err.stack 
+    });
   }
 });
 
