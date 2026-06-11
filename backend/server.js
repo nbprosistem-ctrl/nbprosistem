@@ -162,13 +162,7 @@ const initializeDatabase = async () => {
             ALTER TABLE password_vault ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES users(id) ON DELETE SET NULL;
         `);
         console.log('Tabelas de BD verificadas e garantidas (Supabase).');
-        // Inserir admin padrão separadamente (hash de bcrypt tem $ que conflita com template literal)
-        const ADMIN_HASH = '$2b$10$MFy1bNedYeZY6m1PsUdMtOkLdWAdwFkOArOK7.rpUW96oY9RnJhbi';
-        await pool.query(
-            'INSERT INTO users (name, email, password_hash, role, status) SELECT $1, $2, $3, $4, $5 WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = $2)',
-            ['Administrador', 'admin@marketing.com', ADMIN_HASH, 'ADMIN', 'APPROVED']
-        );
-        console.log('Admin padrão garantido.');
+        // O admin padrão não é mais inserido localmente de forma hardcoded (autenticação via Supabase)
 
         // Garantir coluna is_blocked e remover obrigatoriedade de password_hash para autenticação externa
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT false`);
