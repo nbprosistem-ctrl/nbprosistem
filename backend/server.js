@@ -370,6 +370,56 @@ server.listen(port, () => {
       console.error('Erro no CronJob de Due Date:', e.message);
     }
   }, 3600000); // 1 hora
+
+  // Job de Automação de Tarefas Programadas (Roda a cada 1 minuto)
+  setInterval(async () => {
+    try {
+      const query = `
+        SELECT id, title, owner_id 
+        FROM tasks 
+        WHERE status_column = 'SCHEDULED' 
+          AND scheduled_date IS NOT NULL 
+          AND scheduled_date <= (CURRENT_TIMESTAMP - INTERVAL '1 minute')
+      `;
+      const resTasks = await pool.query(query);
+      for (let t of resTasks.rows) {
+        // Mover para BACKLOG
+        const updateRes = await pool.query(
+          `UPDATE tasks SET status_column = 'BACKLOG', updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+          [t.id]
+        );
+        
+        // Tenta achar um ADMIN para ser o autor da ação no histórico (fallback silencioso se n achar)
+        const adminRes = await pool.query(`SELECT id FROM users WHERE role = 'ADMIN' LIMIT 1`);
+        const systemUserId = adminRes.rows.length > 0 ? adminRes.rows[0].id : t.owner_id;
+
+        // Log Histórico
+        if (systemUserId) {
+          await pool.query(
+            `INSERT INTO task_history (task_id, user_id, action, description) VALUES ($1, $2, 'MOVE', 'Automação moveu o cartão para [BACKLOG] para validação pós-agendamento.')`,
+            [t.id, systemUserId]
+          );
+        }
+
+        if (io) {
+          io.emit('card_moved', updateRes.rows[0]);
+        }
+        
+        if (t.owner_id) {
+          await createNotification(
+            t.owner_id,
+            'Validação Pós-Agendamento',
+            `O horário da tarefa "${t.title}" passou. Ela foi enviada para o Backlog para validação.`,
+            'info',
+            t.id,
+            io
+          );
+        }
+      }
+    } catch(e) {
+      console.error('Erro no CronJob de Tarefas Programadas:', e.message);
+    }
+  }, 60000); // 1 minuto
 });
 
 // reload

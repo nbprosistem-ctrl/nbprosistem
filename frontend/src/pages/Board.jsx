@@ -61,12 +61,22 @@ export default function Board() {
 
   // Colunas do Kanban
   const kanbanColumns = [
-    { id: 'BACKLOG', title: 'Backlog', color: '#94a3b8' },
     { id: 'TODO', title: 'A Fazer', color: '#64748b' },
     { id: 'DOING', title: 'Em Andamento', color: '#fbbf24' },
     { id: 'REVIEW', title: 'Revisão', color: '#6366f1' },
+    { id: 'SCHEDULED', title: 'Programados', color: '#8b5cf6' },
+    { id: 'BACKLOG', title: 'Backlog', color: '#94a3b8' },
     { id: 'DONE', title: 'Finalizado', color: '#10b981' },
   ];
+
+  // Paginação de Colunas
+  const [columnLimits, setColumnLimits] = useState({});
+  const handleLoadMore = (colId) => {
+    setColumnLimits(prev => ({
+      ...prev,
+      [colId]: (prev[colId] || 10) + 5
+    }));
+  };
 
   const markNotificationAsRead = (id) => mutations.markNotificationAsRead.mutate(id);
   const deleteNotification = (e, id) => {
@@ -151,16 +161,23 @@ export default function Board() {
     if (!draggedTask) return;
 
     // Regra do Workflow de Aprovação
-    if (destination.droppableId === 'DONE' && draggedTask.review_status !== 'APPROVED' && user?.role !== 'ADMIN') {
-       alert("✋ Acesso Negado: Esta tarefa precisa passar pela coluna de Revisão e ser 'Aprovada' pelo Revisor antes de ser finalizada.");
+    const restrictedColumns = ['SCHEDULED', 'BACKLOG', 'DONE'];
+    if (restrictedColumns.includes(destination.droppableId) && draggedTask.review_status !== 'APPROVED') {
+       alert("✋ Acesso Negado: A tarefa precisa ser Aprovada na Revisão antes de ir para Programados, Backlog ou Finalizados.");
        return;
     }
 
     // Call Backend via Mutation (com invalidação de cache inclusa)
     mutations.moveTask.mutate({ 
       taskId: draggableId, 
-      status_column: destination.droppableId 
+      status_column: destination.droppableId
     }, {
+      onSuccess: () => {
+        // Ao mover para PROGRAMADOS, abre o card automaticamente para agendamento
+        if (destination.droppableId === 'SCHEDULED') {
+          setSelectedTask({ ...draggedTask, status_column: 'SCHEDULED' });
+        }
+      },
       onError: (err) => {
         console.error(err);
         alert("Falha de conexão: Cartão retornou a posição original.");
@@ -502,9 +519,9 @@ export default function Board() {
                   </select>
                 </div>
 
-                {/* Projeto */}
+                {/* Cliente */}
                 <div>
-                  <p style={{ margin: '0 0 0.25rem', fontSize: '0.68rem', fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Projeto</p>
+                  <p style={{ margin: '0 0 0.25rem', fontSize: '0.68rem', fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cliente</p>
                   <select value={filterProject} onChange={e => setFilterProject(e.target.value)}
                     style={{ width: '100%', border: '1px solid #E5E7EB', borderRadius: '7px', padding: '0.4rem 0.6rem', fontSize: '0.82rem', color: '#374151', background: '#F9FAFB', outline: 'none' }}>
                     <option value="">Todos</option>
@@ -542,7 +559,7 @@ export default function Board() {
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: '1.5rem 2rem', overflowX: 'hidden' }}>
+      <main style={{ flex: 1, padding: '1.5rem 1rem', overflowX: 'hidden' }}>
 
 
 
@@ -577,7 +594,7 @@ export default function Board() {
                 </select>
                 {templateId && (
                   <p style={{ color: '#a5b4fc', fontSize: '0.8rem', marginTop: '0.5rem', marginBottom: 0 }}>
-                    ℹ️ Preencha Projeto, Responsável e Data abaixo. As subtarefas do template serão criadas automaticamente.
+                    ℹ️ Preencha Cliente, Responsável e Data abaixo. As subtarefas do template serão criadas automaticamente.
                   </p>
                 )}
               </div>
@@ -587,7 +604,7 @@ export default function Board() {
               <div>
                 {/* Título só exibe se NÃO for template */}
                 {!templateId && <div className="form-group"><label>Título *</label><input type="text" className="form-input" value={title} onChange={e=>setTitle(e.target.value)} required={!templateId} /></div>}
-                <div className="form-group"><label>Projeto *</label><select className="form-select" value={projectId} onChange={e=>setProjectId(e.target.value)} required><option value="">Selecione o Projeto</option>{projects.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select></div>
+                <div className="form-group"><label>Cliente *</label><select className="form-select" value={projectId} onChange={e=>setProjectId(e.target.value)} required><option value="">Selecione o Cliente</option>{projects.map(p => <option value={p.id} key={p.id}>{p.name}</option>)}</select></div>
                 {!templateId && <div className="form-group"><label>Serviço</label><select className="form-select" value={serviceId} onChange={e=>setServiceId(e.target.value)}><option value="">Nenhum específico</option>{services.map(s => <option value={s.id} key={s.id}>{s.name} ({s.estimated_time}m)</option>)}</select></div>}
               </div>
               <div>
@@ -652,6 +669,8 @@ export default function Board() {
             <div className="board-container">
               {kanbanColumns.map(col => {
                 const colTasks = filteredTasks.filter(t => t.status_column === col.id);
+                const currentLimit = columnLimits[col.id] || 10;
+                const visibleTasks = colTasks.slice(0, currentLimit);
                 
                 return (
                   <Droppable droppableId={col.id} key={col.id}>
@@ -673,7 +692,7 @@ export default function Board() {
                         </h3>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', minHeight: '150px' }}>
-                          {colTasks.map((task, index) => (
+                          {visibleTasks.map((task, index) => (
                             <Draggable draggableId={task.id.toString()} index={index} key={task.id}>
                               {(provided, snapshot) => (
                                 <div 
@@ -754,7 +773,7 @@ export default function Board() {
                                       </span>
                                     </div>
 
-                                    {task.due_date && (
+                                    {task.due_date && task.status_column !== 'SCHEDULED' && (
                                       <span style={{ 
                                         fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem',
                                         color: task.status_column !== 'DONE' ? getDueDateStatus(task.due_date).color : 'var(--text-secondary)',
@@ -765,6 +784,16 @@ export default function Board() {
                                         {task.status_column !== 'DONE' && getDueDateStatus(task.due_date).label === 'hoje' && " (Hoje)"}
                                       </span>
                                     )}
+
+                                    {task.status_column === 'SCHEDULED' && task.scheduled_date && (
+                                      <span style={{ 
+                                        fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem',
+                                        color: '#8b5cf6', fontWeight: 'bold'
+                                      }}>
+                                        <Calendar size={12} color="#8b5cf6" /> 
+                                        {new Date(task.scheduled_date).toLocaleString('pt-BR').slice(0, 16)}
+                                      </span>
+                                    )}
                                   </div>
 
                                 </div>
@@ -773,6 +802,20 @@ export default function Board() {
                           ))}
                           
                           {provided.placeholder}
+
+                          {colTasks.length > currentLimit && (
+                            <button 
+                              onClick={() => handleLoadMore(col.id)}
+                              style={{
+                                width: '100%', padding: '0.6rem', background: 'rgba(99,102,241,0.08)', 
+                                border: '1px dashed rgba(99,102,241,0.3)', color: 'var(--accent)',
+                                borderRadius: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold',
+                                transition: 'all 0.2s', marginTop: '0.25rem'
+                              }}
+                            >
+                              Ver mais (+5)
+                            </button>
+                          )}
 
                           {/* Nota editável fixa no rodapé da coluna */}
                           <ColumnNote columnId={col.id} />

@@ -60,7 +60,7 @@ export default function CalendarView() {
           // Evento principal (real no banco)
           calendarEvents.push({
             id: task.id.toString(),
-            title: `[${task.project_name || 'Sem projeto'}] ${task.title}`,
+            title: `[${task.project_name || 'Sem cliente'}] ${task.title}`,
             date: baseDate + timeString,
             backgroundColor: getColor(task.priority),
             borderColor: getStatusColor(baseDate, task.status_column) || getColor(task.priority),

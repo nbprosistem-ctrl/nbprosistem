@@ -144,7 +144,7 @@ router.post('/', async (req, res) => {
 // Qualquer usuário logado e aprovado pode arrastar um cartão livremente para interagir com a equipe
 router.patch('/:id/status', async (req, res) => {
   const { id } = req.params;
-  const { status_column } = req.body;
+  const { status_column, scheduled_date } = req.body;
 
   if (!status_column) return res.status(400).json({ error: 'O novo status é obrigatório.' });
 
@@ -159,13 +159,15 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(403).json({ error: 'Apenas administradores podem restaurar tarefas finalizadas.' });
     }
 
-    // Regra do Workflow: Impede Movimentação pra DONE se exigia Revisão mas não foi 'APPROVED' (Somente Admin pode forçar o Bypass)
-    if (status_column === 'DONE' && oldTask.review_status !== 'APPROVED' && req.user.role !== 'ADMIN') {
-       return res.status(403).json({ error: 'Esta tarefa precisa ser aprovada na sala de Revisão antes de ser finalizada.' });
+    // Regra do Workflow de Aprovação
+    const restrictedColumns = ['SCHEDULED', 'BACKLOG', 'DONE'];
+    if (restrictedColumns.includes(status_column) && oldTask.review_status !== 'APPROVED') {
+       return res.status(403).json({ error: 'Acesso Negado: A tarefa precisa ser Aprovada na Revisão antes de avançar para Programados, Backlog ou Finalizados.' });
     }
 
     // UPDATE FIELDS dinâmicos
     let extraSet = "";
+    let paramIndex = 3;
     let extraParams = [];
     
     // Se a tarefa retornar ou entrar na etapa de REVISÃO (REVIEW), Zera a aprovação anterior pro Admin olhar de novo
@@ -173,10 +175,16 @@ router.patch('/:id/status', async (req, res) => {
       extraSet = ", review_status = 'PENDING', reviewer_id = NULL, review_timestamp = NULL";
     }
 
+    if (scheduled_date) {
+      extraSet += `, scheduled_date = $${paramIndex}`;
+      extraParams.push(scheduled_date);
+      paramIndex++;
+    }
+
     // 2. Atualiza o status do Cartão arrastado
     const result = await pool.query(
       `UPDATE tasks SET status_column = $1, updated_at = CURRENT_TIMESTAMP${extraSet} WHERE id = $2 RETURNING *`,
-      [status_column, id]
+      [status_column, id, ...extraParams]
     );
     
     // Se o cartão foi movido para DONE e tinha uma due_date no futuro, atualiza a due_date para agora
@@ -490,6 +498,25 @@ router.patch('/:id/review', async (req, res) => {
   } catch (err) {
     console.error('Erro na Revisão de Tarefa', err);
     res.status(500).json({ error: 'Erro ao avaliar tarefa.' });
+  }
+});
+
+// PATCH /api/tasks/:id/scheduled-date - Atualizar a Data de Programação
+router.patch('/:id/scheduled-date', async (req, res) => {
+  const { id } = req.params;
+  const { scheduled_date } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE tasks SET scheduled_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [scheduled_date || null, id]
+    );
+
+    if (req.io) req.io.emit('card_moved', result.rows[0]);
+    res.json({ message: 'Data de Programação atualizada.', task: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao atualizar data de programação.' });
   }
 });
 

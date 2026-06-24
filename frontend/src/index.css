@@ -284,7 +284,7 @@ body {
    ============================ */
 .page-content {
   flex: 1;
-  padding: 1.75rem 2rem;
+  padding: 1.5rem 1rem;
   animation: fadeIn 0.25s ease-out;
   overflow: hidden;
 }
@@ -473,11 +473,11 @@ body {
 /* Retrocompatibilidade */
 .board-container {
   display: flex;
-  gap: 1.25rem;
+  gap: 1rem;
   overflow-x: auto;
-  padding-bottom: 1rem;
+  padding-bottom: 0.5rem;
   padding-top: 0.25rem;
-  height: calc(100vh - 220px);
+  height: calc(100vh - 150px);
 }
 
 /* COLUNAS */
@@ -556,7 +556,7 @@ body {
 /* Retrocompatível para páginas que ainda usam .main-content */
 .main-content {
   flex: 1;
-  padding: 1.75rem 2rem;
+  padding: 1.5rem 1rem;
   animation: fadeIn 0.25s;
   overflow: hidden;
 }

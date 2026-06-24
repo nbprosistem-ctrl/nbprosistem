@@ -18,7 +18,7 @@ export default function Sidebar() {
 
   const navItems = [
     { icon: Kanban,         label: 'Kanban',      path: '/board' },
-    { icon: FolderOpen,     label: 'Projetos',    path: '/projects' },
+    { icon: FolderOpen,     label: 'Clientes',    path: '/projects' },
     { icon: Calendar,       label: 'Calendário',  path: '/calendar' },
     { icon: Shield,         label: 'Cofre',       path: '/vault' },
   ];

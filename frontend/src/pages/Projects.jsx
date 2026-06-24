@@ -27,7 +27,7 @@ export default function Projects() {
       });
       setProjects(response.data);
     } catch (err) {
-      setError('Erro ao carregar os projetos.');
+      setError('Erro ao carregar os clientes.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ export default function Projects() {
       
       fetchProjects();
     } catch (err) {
-      setError('Erro ao cadastrar o projeto.');
+      setError('Erro ao cadastrar o cliente.');
     } finally {
       setSubmitting(false);
     }
@@ -74,7 +74,7 @@ export default function Projects() {
 
   const handleDelete = async (id) => {
     if (user.role !== 'ADMIN') return;
-    if (!window.confirm('Tem certeza que deseja excluir esse projeto e TODAS AS SUAS TAREFAS associadas?')) return;
+    if (!window.confirm('Tem certeza que deseja excluir esse cliente e TODAS AS SUAS TAREFAS associadas?')) return;
     
     try {
       const token = localStorage.getItem('token');
@@ -83,7 +83,7 @@ export default function Projects() {
       });
       fetchProjects();
     } catch (err) {
-      setError('Erro ao excluir projeto.');
+      setError('Erro ao excluir cliente.');
     }
   };
 
@@ -107,7 +107,7 @@ export default function Projects() {
       <Sidebar />
       <div className="app-main">
         <header className="topbar">
-          <h1 className="topbar-title">Gestão de Projetos</h1>
+          <h1 className="topbar-title">Gestão de Clientes</h1>
         </header>
       <main className="main-content">
         {error && <div className="alert">{error}</div>}
@@ -117,11 +117,11 @@ export default function Projects() {
           {/* Formulário - Somente Administradores visualizam a criação! */}
           {user?.role === 'ADMIN' && (
             <div className="auth-card" style={{ maxWidth: '100%', margin: '0', height: 'fit-content' }}>
-              <h3 style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '700' }}>Cadastrar Novo Projeto</h3>
+              <h3 style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '700' }}>Cadastrar Novo Cliente</h3>
               
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label>Nome do Projeto *</label>
+                  <label>Nome do Cliente *</label>
                   <input type="text" className="form-input" value={name} onChange={(e) => setName(e.target.value)} required />
                 </div>
 
@@ -156,21 +156,21 @@ export default function Projects() {
                 </div>
 
                 <button type="submit" className="btn" disabled={submitting}>
-                  <Plus size={18} /> Criar Projeto
+                  <Plus size={18} /> Criar Cliente
                 </button>
               </form>
             </div>
           )}
 
-          {/* Lista de Projetos (Todos veem) */}
-          <div style={{ gridColumn: user?.role === 'ADMIN' ? '2' : '1' }}>
-            <h3 style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '700' }}>Todos os Projetos</h3>
+          {/* Lista de Clientes (Todos veem) */}
+          <div className="auth-card" style={{ maxWidth: '100%' }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '700' }}>Todos os Clientes</h3>
             
             {loading ? (
-              <p>Carregando projetos...</p>
+              <p>Carregando clientes...</p>
             ) : projects.length === 0 ? (
               <div style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: 'var(--radius)', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                Nenhum projeto registrado no sistema.
+                Nenhum cliente registrado no sistema.
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>

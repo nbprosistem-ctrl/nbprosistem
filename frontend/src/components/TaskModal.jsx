@@ -34,6 +34,17 @@ export default function TaskModal({ task, users = [], onClose }) {
   const [reassigning, setReassigning] = useState(false);
   const [selectedOwnerId, setSelectedOwnerId] = useState(task.owner_id || '');
 
+  const [editingScheduledDate, setEditingScheduledDate] = useState(false);
+  const [draftScheduledDate, setDraftScheduledDate] = useState('');
+
+  useEffect(() => {
+    if (task.scheduled_date) {
+      setDraftScheduledDate(new Date(new Date(task.scheduled_date).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16));
+    } else {
+      setDraftScheduledDate('');
+    }
+  }, [task.scheduled_date]);
+
   useEffect(() => {
     setSelectedOwnerId(task.owner_id || '');
   }, [task.owner_id]);
@@ -320,6 +331,56 @@ export default function TaskModal({ task, users = [], onClose }) {
                   <Clock size={15} color="#F59E0B" /> {task.recurrence}
                 </div>
               </div>
+
+              {/* Data de Programação */}
+              {task.status_column === 'SCHEDULED' && (
+                <div style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '10px', padding: '0.9rem' }}>
+                  <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', fontWeight: '600', color: '#8B5CF6', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Agendar Publicação</p>
+                  
+                  {!editingScheduledDate ? (
+                     <div 
+                       onClick={() => setEditingScheduledDate(true)}
+                       style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#8B5CF6', fontSize: '0.875rem', fontWeight: '700', cursor: 'pointer' }}
+                     >
+                       <Clock size={15} color="#8B5CF6" />
+                       {task.scheduled_date ? new Date(task.scheduled_date).toLocaleString('pt-BR').slice(0, 16) : 'Definir Data e Hora...'}
+                     </div>
+                  ) : (
+                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                       <input 
+                         autoFocus
+                         type="datetime-local" 
+                         style={{ border: '1px solid rgba(139,92,246,0.4)', borderRadius: '6px', padding: '0.4rem', background: '#FFFFFF', outline: 'none', color: '#8B5CF6', fontWeight: '700', fontSize: '0.85rem', width: '100%' }}
+                         value={draftScheduledDate}
+                         onChange={(e) => setDraftScheduledDate(e.target.value)}
+                       />
+                       <div style={{ display: 'flex', gap: '0.5rem' }}>
+                         <button 
+                           onClick={() => {
+                             if (draftScheduledDate) {
+                               const dateObj = new Date(draftScheduledDate);
+                               mutations.updateScheduledDate.mutate({ taskId: task.id, scheduled_date: dateObj.toISOString() }, {
+                                 onSuccess: () => setEditingScheduledDate(false)
+                               });
+                             } else {
+                               setEditingScheduledDate(false);
+                             }
+                           }}
+                           style={{ background: '#8B5CF6', color: 'white', border: 'none', padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer' }}
+                         >
+                           Salvar
+                         </button>
+                         <button 
+                           onClick={() => setEditingScheduledDate(false)}
+                           style={{ background: 'transparent', color: '#6B7280', border: 'none', padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                         >
+                           Cancelar
+                         </button>
+                       </div>
+                     </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Alerta de atraso / Hoje */}

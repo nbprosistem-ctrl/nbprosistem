@@ -141,6 +141,15 @@ export const useKanbanData = () => {
     },
   });
 
+  const updateScheduledDateMutation = useMutation({
+    mutationFn: async ({ taskId, scheduled_date }) => {
+      await api.patch(`/api/tasks/${taskId}/scheduled-date`, { scheduled_date });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+
   const createTaskMutation = useMutation({
     mutationFn: async (taskData) => {
       const endpoint = taskData.templateId 
@@ -218,6 +227,7 @@ export const useKanbanData = () => {
       uploadAttachment: uploadAttachmentMutation,
       reassignTask: reassignTaskMutation,
       reviewTask: reviewTaskMutation,
+      updateScheduledDate: updateScheduledDateMutation,
     }
   };
 };

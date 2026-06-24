@@ -112,9 +112,9 @@ export default function Header({ title }) {
             className="btn" 
             style={{ width: 'auto', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.1)' }}
             onClick={() => navigate('/projects')}
-            title="Projetos"
+            title="Clientes"
           >
-            <Settings size={18} /> Projetos
+            <Settings size={18} /> Clientes
           </button>
           
           <button 
